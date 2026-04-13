@@ -1,14 +1,18 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quantum Nuan</title>  <style>
+  <title>Quantum Nuan</title>
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
+    /* YOUR ORIGINAL BASE STYLES */
     body {
       background: #0a0a0a;
       color: #eaeaea;
@@ -18,11 +22,14 @@
       justify-content: center;
       height: 100vh;
       text-align: center;
+      overflow: hidden;
+      user-select: none;
     }
 
     .container {
       max-width: 500px;
       padding: 20px;
+      z-index: 10;
     }
 
     .code {
@@ -48,16 +55,217 @@
       color: #555;
       line-height: 1.6;
     }
-  </style></head><body>
+
+    /* THE APEX ADDITIONS */
+    :root { --lilac: #d8b4fe; }
+
+    .btn-premium {
+      margin-top: 40px;
+      background: transparent; border: 1px solid #333; color: #777;
+      padding: 12px 30px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: 0.4s; border-radius: 4px; font-size: 0.75rem;
+    }
+    .btn-premium:hover {
+      border-color: var(--lilac); color: var(--lilac);
+      box-shadow: 0 0 15px rgba(216, 180, 254, 0.1);
+    }
+
+    .stats {
+      position: fixed; bottom: 30px; font-size: 0.65rem;
+      letter-spacing: 2px; color: #333; text-transform: uppercase;
+    }
+
+    /* THE WAITING OVERLAY */
+    #wait-overlay {
+      display: none; position: fixed; inset: 0; background: #0a0a0a;
+      z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
+    }
+    
+    #bounce-container {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      overflow: hidden; z-index: -1; 
+    }
+    #bouncing-box {
+      position: absolute; width: 50px; height: 50px;
+      background: rgba(216, 180, 254, 0.03);
+      border: 1px solid var(--lilac);
+      box-shadow: 0 0 20px rgba(216, 180, 254, 0.15);
+      backdrop-filter: blur(5px);
+      top: 0; left: 0; will-change: transform;
+    }
+
+    #my-timer { display: none; }
+    #my-handle-display { color: var(--lilac); letter-spacing: 4px; margin-bottom: 20px; font-size: 0.9rem; text-transform: uppercase; }
+    
+    .leader-box { margin-top: 2rem; text-align: center; border-left: 1px solid #222; padding-left: 2rem; }
+    .leader-label { font-size: 0.6rem; color: #555; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px; cursor: default; }
+    #leader-display { font-size: 1.2rem; font-weight: 400; color: #eaeaea; }
+    
+    .buy-throne-btn {
+      margin-top: 15px; background: none; border: 1px solid #222;
+      color: #666; padding: 8px 16px; font-size: 0.6rem;
+      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+      border-radius: 2px; transition: 0.3s;
+    }
+    .buy-throne-btn:hover { border-color: var(--lilac); color: var(--lilac); }
+
+    .sponsor-tag {
+      position: fixed; top: 30px; font-size: 0.6rem; color: #444;
+      letter-spacing: 2px; text-transform: uppercase;
+      text-decoration: none; transition: 0.3s;
+    }
+    .sponsor-tag:hover { color: var(--lilac); }
+  </style>
+</head>
+<body>
+
   <div class="container">
-    <div class="code">Error 369</div><h1>Something is being built.</h1>
-<p>QuantumNuan is currently under Construction.</p>
+    <div class="code">Error 369</div>
+    <h1>Something is being built.</h1>
+    <p>QuantumNuan is currently under Construction.</p>
 
-<div class="prayer">
-  Pray for its early Revival.<br>
-  We are counting on your prayers, here at QuantumNuan HQ.
-</div>
+    <div class="prayer">
+      Pray for its early Revival.<br>
+      We are counting on your prayers, here at QuantumNuan HQ.
+    </div>
 
+    <button id="start-btn" class="btn-premium">Prove Your Worth</button>
   </div>
+
+  <div class="stats">
+    Watching: <span id="active-count">1</span> — Total: <span id="total-count">...</span>
+  </div>
+
+  <div id="wait-overlay">
+    <div id="bounce-container"><div id="bouncing-box"></div></div>
+    <p id="my-handle-display"></p>
+    <h1 id="my-timer">0:00</h1>
+    
+    <p style="color: #444; font-size: 0.65rem; letter-spacing: 6px; text-transform: uppercase; margin-bottom: 40px; margin-top: 20px;">
+        Time is an illusion. Do not blink.
+    </p>
+
+    <div class="leader-box">
+      <div class="leader-label" id="apex-label">The Apex</div>
+      <div id="leader-display">Vacant</div>
+      <button class="buy-throne-btn" id="buy-btn">Buy Immortality (₹...)</button>
+    </div>
+    
+    <a href="https://x.com/quantumnuan" target="_blank" class="sponsor-tag">Sponsor this space. DM @quantumnuan</a>
+  </div>
+
+<script>
+(() => {
+    // 1. The Ghost Network (Gun.js)
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const db = gun.get('quantum-nuan-apex-v1'); 
+    const leaderNode = db.get('apex');
+
+    let bestSecs = 0; 
+    let myTimer = null;
+    let mySecs = 0;
+    let boxAnimFrame;
+
+    // 2. Local State Management
+    const cachedLeader = JSON.parse(localStorage.getItem('qn-apex'));
+    if(cachedLeader) {
+        bestSecs = cachedLeader.seconds;
+        updateLeaderUI(cachedLeader.name, bestSecs);
+    }
+
+    leaderNode.on((data) => {
+        if (data && data.seconds > bestSecs) {
+            bestSecs = data.seconds;
+            localStorage.setItem('qn-apex', JSON.stringify(data));
+            updateLeaderUI(data.name, bestSecs);
+        }
+    });
+
+    db.get('stats').get('total').once((v) => db.get('stats').get('total').put((v || 0) + 1));
+    db.get('stats').get('total').on((v) => document.getElementById('total-count').innerText = v);
+
+    function updateLeaderUI(name, seconds) {
+        document.getElementById('leader-display').innerText = `${name}`;
+        const cost = seconds + 1;
+        document.getElementById('buy-btn').innerText = `Buy Immortality (₹${cost})`;
+    }
+
+    // 3. The Sanity Drain (Lilac Bouncing Box)
+    const box = document.getElementById('bouncing-box');
+    let x = Math.random() * (window.innerWidth - 50);
+    let y = Math.random() * (window.innerHeight - 50);
+    let dx = 2.5; let dy = 2.5;
+
+    function animateBox() {
+        const maxX = window.innerWidth - 50;
+        const maxY = window.innerHeight - 50;
+        x += dx; y += dy;
+        if (x >= maxX || x <= 0) dx = -dx;
+        if (y >= maxY || y <= 0) dy = -dy;
+        box.style.transform = `translate(${x}px, ${y}px)`;
+        boxAnimFrame = requestAnimationFrame(animateBox);
+    }
+
+    // 4. The Gateway
+    document.getElementById('start-btn').addEventListener('click', () => {
+        const h = prompt("Who demands the throne? (@handle):");
+        if (!h) return;
+        
+        const handle = h.startsWith('@') ? h : '@' + h;
+        document.getElementById('my-handle-display').innerText = handle;
+        document.getElementById('wait-overlay').style.display = 'flex';
+        
+        mySecs = 0;
+        animateBox();
+
+        myTimer = setInterval(() => {
+            mySecs++;
+            if (mySecs > bestSecs) {
+                leaderNode.put({ name: handle, seconds: mySecs });
+            }
+        }, 1000);
+    });
+
+    // 5. The Ego Tax (Dynamic Checkout)
+    document.getElementById('buy-btn').addEventListener('click', () => {
+        const cost = bestSecs + 1;
+        const pitch = `Time is money. Displace the Apex for ₹${cost}.\n\nClick OK to DM @quantumnuan on X for the private UPI link. Your handle will be locked in manually.`;
+        if (confirm(pitch)) {
+            window.open('https://x.com/quantumnuan', '_blank');
+        }
+    });
+
+    // 6. The Guillotine (Anti-Cheat)
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden && myTimer) {
+            cancelAnimationFrame(boxAnimFrame);
+            location.reload();
+        }
+    });
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // 7. The Architect's Backdoor (20-Second Phantom Touch)
+    let touchTimer;
+    const apexLabel = document.getElementById('apex-label');
+
+    const triggerAdmin = () => {
+        const adminHandle = prompt("ADMIN: Enter exact paid @handle:");
+        if(adminHandle) {
+            const adminSecs = parseInt(prompt("ADMIN: Enter total seconds to lock in:"), 10);
+            if (!isNaN(adminSecs)) {
+                leaderNode.put({ name: adminHandle, seconds: adminSecs });
+                alert(`Throne overridden. ${adminHandle} now rules with ${adminSecs}s.`);
+            }
+        }
+    };
+
+    apexLabel.addEventListener('touchstart', () => touchTimer = setTimeout(triggerAdmin, 20000));
+    apexLabel.addEventListener('mousedown', () => touchTimer = setTimeout(triggerAdmin, 20000));
+    
+    ['touchend', 'touchmove', 'mouseup', 'mouseleave'].forEach(evt => {
+        apexLabel.addEventListener(evt, () => clearTimeout(touchTimer));
+    });
+})();
+</script>
 </body>
 </html>
