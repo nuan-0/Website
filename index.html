@@ -6,159 +6,165 @@
   <title>Quantum Nuan</title>
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    :root { --lilac: #d8b4fe; --dark-lilac: #9b72cf; --bg: #050505; }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* YOUR ORIGINAL BASE STYLES */
     body {
-      background: #0a0a0a;
-      color: #eaeaea;
+      background: var(--bg); color: #eaeaea;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
-      overflow: hidden;
-      user-select: none;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; text-align: center; overflow: hidden; user-select: none;
     }
 
-    .container {
-      max-width: 500px;
-      padding: 20px;
-      z-index: 10;
-    }
-
-    .code {
-      color: #555;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-      letter-spacing: 1px;
-    }
-
-    h1 {
-      font-weight: 500;
-      font-size: 2rem;
-    }
-
-    p {
-      color: #777;
-      margin-top: 10px;
-    }
-
-    .prayer {
-      margin-top: 30px;
-      font-size: 0.85rem;
-      color: #555;
-      line-height: 1.6;
-    }
-
-    /* THE APEX ADDITIONS */
-    :root { --lilac: #d8b4fe; }
+    /* --- THE LOBBY --- */
+    .container { max-width: 500px; padding: 20px; z-index: 10; transition: opacity 0.8s ease; }
+    .code { color: #555; font-size: 0.9rem; margin-bottom: 20px; letter-spacing: 1px; }
+    h1 { font-weight: 500; font-size: 2rem; }
+    p { color: #777; margin-top: 10px; }
+    .prayer { margin-top: 30px; font-size: 0.85rem; color: #555; line-height: 1.6; }
 
     .btn-premium {
-      margin-top: 40px;
-      background: transparent; border: 1px solid #333; color: #777;
+      margin-top: 40px; background: transparent; border: 1px solid #333; color: #777;
       padding: 12px 30px; letter-spacing: 2px; text-transform: uppercase;
       cursor: pointer; transition: 0.4s; border-radius: 4px; font-size: 0.75rem;
     }
-    .btn-premium:hover {
-      border-color: var(--lilac); color: var(--lilac);
-      box-shadow: 0 0 15px rgba(216, 180, 254, 0.1);
-    }
+    .btn-premium:hover { border-color: var(--lilac); color: var(--lilac); box-shadow: 0 0 15px rgba(216, 180, 254, 0.1); }
 
     .stats {
       position: fixed; bottom: 30px; font-size: 0.65rem;
       letter-spacing: 2px; color: #333; text-transform: uppercase;
+      z-index: 10; transition: opacity 0.8s ease;
     }
 
-    /* THE WAITING OVERLAY */
+    /* --- THE APEX ROOM --- */
     #wait-overlay {
-      display: none; position: fixed; inset: 0; background: #0a0a0a;
+      display: none; position: fixed; inset: 0; background: var(--bg);
       z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
-    }
-    
-    #bounce-container {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      overflow: hidden; z-index: -1; 
-    }
-    #bouncing-box {
-      position: absolute; width: 50px; height: 50px;
-      background: rgba(216, 180, 254, 0.03);
-      border: 1px solid var(--lilac);
-      box-shadow: 0 0 20px rgba(216, 180, 254, 0.15);
-      backdrop-filter: blur(5px);
-      top: 0; left: 0; will-change: transform;
+      opacity: 0; animation: cinematicFadeIn 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    #my-timer { display: none; }
-    #my-handle-display { color: var(--lilac); letter-spacing: 4px; margin-bottom: 20px; font-size: 0.9rem; text-transform: uppercase; }
-    
-    .leader-box { margin-top: 2rem; text-align: center; border-left: 1px solid #222; padding-left: 2rem; }
-    .leader-label { font-size: 0.6rem; color: #555; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 10px; cursor: default; }
-    #leader-display { font-size: 1.2rem; font-weight: 400; color: #eaeaea; }
-    
+    @keyframes cinematicFadeIn {
+      0% { opacity: 0; transform: scale(0.98); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* The Containment Field */
+    .glass-stage {
+      position: relative;
+      width: 85vw; max-width: 400px;
+      height: 60vh; max-height: 600px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(216, 180, 254, 0.15);
+      border-radius: 2px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(216, 180, 254, 0.02);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* The Golden Ratio Slow Cube */
+    #bouncing-box {
+      position: absolute; width: 30px; height: 30px;
+      background: rgba(216, 180, 254, 0.05); border: 1px solid var(--lilac);
+      box-shadow: 0 0 15px rgba(216, 180, 254, 0.2);
+      top: 50%; left: 50%; will-change: transform;
+    }
+
+    /* 3D Share Bookmark */
+    .share-ribbon {
+      position: absolute; top: 40px; left: -8px;
+      background: var(--lilac); color: var(--bg);
+      padding: 6px 16px 6px 20px; font-size: 0.55rem; font-weight: bold;
+      letter-spacing: 3px; text-transform: uppercase; cursor: pointer;
+      box-shadow: 4px 10px 20px rgba(0,0,0,0.5);
+      border-top-right-radius: 2px; border-bottom-right-radius: 2px;
+      transform-origin: left center; transform: perspective(200px) rotateY(15deg);
+      transition: all 0.3s ease; z-index: 10;
+    }
+    .share-ribbon::before {
+      content: ''; position: absolute; top: 100%; left: 0;
+      border-top: 8px solid var(--dark-lilac); border-left: 8px solid transparent;
+    }
+    .share-ribbon:hover { transform: perspective(200px) rotateY(0deg) translateX(4px); }
+
+    /* Top Right HUD (The Secret Trigger) */
+    .record-hud {
+      position: absolute; top: 20px; right: 20px;
+      font-size: 0.65rem; color: #eaeaea; letter-spacing: 2px;
+      text-transform: uppercase; cursor: default;
+      text-shadow: 0 0 10px rgba(216, 180, 254, 0.2); z-index: 10;
+    }
+
+    .philosophy-text {
+      position: absolute; bottom: 30px;
+      color: #333; font-size: 0.55rem; letter-spacing: 6px; 
+      text-transform: uppercase; text-align: center; pointer-events: none;
+    }
+
+    /* --- FOOTER (Monetization & Status) --- */
+    .footer-dock {
+      position: absolute; bottom: 30px; left: 0; width: 100%;
+      display: flex; flex-direction: column; align-items: center; gap: 15px;
+      opacity: 0; animation: fadeUp 2s 1s forwards;
+    }
+
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
     .buy-throne-btn {
-      margin-top: 15px; background: none; border: 1px solid #222;
-      color: #666; padding: 8px 16px; font-size: 0.6rem;
-      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
-      border-radius: 2px; transition: 0.3s;
+      background: none; border: 1px solid #222; color: #777;
+      padding: 8px 24px; font-size: 0.55rem; letter-spacing: 3px;
+      text-transform: uppercase; cursor: pointer; border-radius: 2px; transition: 0.4s;
     }
     .buy-throne-btn:hover { border-color: var(--lilac); color: var(--lilac); }
 
     .sponsor-tag {
-      position: fixed; top: 30px; font-size: 0.6rem; color: #444;
-      letter-spacing: 2px; text-transform: uppercase;
-      text-decoration: none; transition: 0.3s;
+      font-size: 0.5rem; color: #444; letter-spacing: 3px;
+      text-transform: uppercase; text-decoration: none; transition: 0.3s;
     }
     .sponsor-tag:hover { color: var(--lilac); }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="container" id="lobby">
     <div class="code">Error 369</div>
     <h1>Something is being built.</h1>
     <p>QuantumNuan is currently under Construction.</p>
-
     <div class="prayer">
       Pray for its early Revival.<br>
       We are counting on your prayers, here at QuantumNuan HQ.
     </div>
-
     <button id="start-btn" class="btn-premium">Prove Your Worth</button>
   </div>
 
-  <div class="stats">
+  <div class="stats" id="lobby-stats">
     Watching: <span id="active-count">1</span> — Total: <span id="total-count">...</span>
   </div>
 
   <div id="wait-overlay">
-    <div id="bounce-container"><div id="bouncing-box"></div></div>
-    <p id="my-handle-display"></p>
-    <h1 id="my-timer">0:00</h1>
     
-    <p style="color: #444; font-size: 0.65rem; letter-spacing: 6px; text-transform: uppercase; margin-bottom: 40px; margin-top: 20px;">
-        Time is an illusion. Do not blink.
-    </p>
-
-    <div class="leader-box">
-      <div class="leader-label" id="apex-label">The Apex</div>
-      <div id="leader-display">Vacant</div>
-      <button class="buy-throne-btn" id="buy-btn">Buy Immortality (₹...)</button>
+    <div class="glass-stage" id="stage">
+      <div class="share-ribbon" onclick="shareTrap()">Share</div>
+      <div class="record-hud" id="god-trigger">Vacant : 0:00</div>
+      
+      <div id="bouncing-box"></div>
+      
+      <div class="philosophy-text">Time is an illusion.<br><br>Do not blink.</div>
     </div>
-    
-    <a href="https://x.com/quantumnuan" target="_blank" class="sponsor-tag">Sponsor this space. DM @quantumnuan</a>
+
+    <div class="footer-dock">
+      <button class="buy-throne-btn" id="buy-btn">Buy Immortality (₹...)</button>
+      <a href="https://x.com/quantumnuan" target="_blank" class="sponsor-tag">Advertise Here. DM @quantumnuan</a>
+    </div>
+
   </div>
 
 <script>
 (() => {
-    // 1. The Ghost Network (Gun.js)
+    // 1. Core Network
     const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
-    const db = gun.get('quantum-nuan-apex-v1'); 
+    const db = gun.get('quantum-nuan-apex-v2'); 
     const leaderNode = db.get('apex');
 
     let bestSecs = 0; 
@@ -166,8 +172,8 @@
     let mySecs = 0;
     let boxAnimFrame;
 
-    // 2. Local State Management
-    const cachedLeader = JSON.parse(localStorage.getItem('qn-apex'));
+    // 2. Local State & UI Sync
+    const cachedLeader = JSON.parse(localStorage.getItem('qn-apex-v2'));
     if(cachedLeader) {
         bestSecs = cachedLeader.seconds;
         updateLeaderUI(cachedLeader.name, bestSecs);
@@ -176,7 +182,7 @@
     leaderNode.on((data) => {
         if (data && data.seconds > bestSecs) {
             bestSecs = data.seconds;
-            localStorage.setItem('qn-apex', JSON.stringify(data));
+            localStorage.setItem('qn-apex-v2', JSON.stringify(data));
             updateLeaderUI(data.name, bestSecs);
         }
     });
@@ -185,37 +191,63 @@
     db.get('stats').get('total').on((v) => document.getElementById('total-count').innerText = v);
 
     function updateLeaderUI(name, seconds) {
-        document.getElementById('leader-display').innerText = `${name}`;
+        document.getElementById('god-trigger').innerText = `${name} : ${formatTime(seconds)}`;
         const cost = seconds + 1;
         document.getElementById('buy-btn').innerText = `Buy Immortality (₹${cost})`;
     }
 
-    // 3. The Sanity Drain (Lilac Bouncing Box)
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    // 3. Golden Ratio Physics
     const box = document.getElementById('bouncing-box');
-    let x = Math.random() * (window.innerWidth - 50);
-    let y = Math.random() * (window.innerHeight - 50);
-    let dx = 2.5; let dy = 2.5;
+    const stage = document.getElementById('stage');
+    
+    // Position inside the relative container
+    let x = 100; 
+    let y = 100;
+    
+    // The Golden Ratio for mathematically uncertain movement
+    const phi = 1.6180339887; 
+    let dx = 0.8 * phi; // Slow, irregular X velocity
+    let dy = 0.8;       // Slow Y velocity
 
     function animateBox() {
-        const maxX = window.innerWidth - 50;
-        const maxY = window.innerHeight - 50;
+        // Calculate bounds dynamically based on the glass stage size
+        const maxX = stage.clientWidth - 30; // 30 is box width
+        const maxY = stage.clientHeight - 30;
+
         x += dx; y += dy;
-        if (x >= maxX || x <= 0) dx = -dx;
-        if (y >= maxY || y <= 0) dy = -dy;
+        
+        if (x >= maxX) { x = maxX; dx = -dx; }
+        if (x <= 0) { x = 0; dx = -dx; }
+        if (y >= maxY) { y = maxY; dy = -dy; }
+        if (y <= 0) { y = 0; dy = -dy; }
+
         box.style.transform = `translate(${x}px, ${y}px)`;
         boxAnimFrame = requestAnimationFrame(animateBox);
     }
 
-    // 4. The Gateway
+    // 4. Initialization
     document.getElementById('start-btn').addEventListener('click', () => {
-        const h = prompt("Who demands the throne? (@handle):");
+        const h = prompt("Identity (@handle):");
         if (!h) return;
         
         const handle = h.startsWith('@') ? h : '@' + h;
-        document.getElementById('my-handle-display').innerText = handle;
+        
+        // Hide Lobby, Show Trap
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('lobby-stats').style.display = 'none';
         document.getElementById('wait-overlay').style.display = 'flex';
         
         mySecs = 0;
+        
+        // Initialize position based on rendered stage size
+        x = Math.random() * (stage.clientWidth - 30);
+        y = Math.random() * (stage.clientHeight - 30);
         animateBox();
 
         myTimer = setInterval(() => {
@@ -226,16 +258,35 @@
         }, 1000);
     });
 
-    // 5. The Ego Tax (Dynamic Checkout)
+    // 5. Commerce
     document.getElementById('buy-btn').addEventListener('click', () => {
         const cost = bestSecs + 1;
-        const pitch = `Time is money. Displace the Apex for ₹${cost}.\n\nClick OK to DM @quantumnuan on X for the private UPI link. Your handle will be locked in manually.`;
+        const pitch = `Displace the current handle for ₹${cost}.\n\nClick OK to DM @quantumnuan for the private UPI link. Manual verification applies.`;
         if (confirm(pitch)) {
             window.open('https://x.com/quantumnuan', '_blank');
         }
     });
 
-    // 6. The Guillotine (Anti-Cheat)
+    // 6. The Share Web API
+    window.shareTrap = async function() {
+        const shareData = {
+            title: 'QuantumNuan Room',
+            text: 'I am trapped in the Apex Room. Do not blink.',
+            url: window.location.href
+        };
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Link copied to clipboard.");
+            }
+        } catch (err) {
+            console.error('Share failed:', err);
+        }
+    };
+
+    // 7. Guillotine (Anti-Cheat)
     document.addEventListener("visibilitychange", () => {
         if (document.hidden && myTimer) {
             cancelAnimationFrame(boxAnimFrame);
@@ -244,26 +295,26 @@
     });
     document.addEventListener('contextmenu', event => event.preventDefault());
 
-    // 7. The Architect's Backdoor (20-Second Phantom Touch)
+    // 8. Phantom Touch (Wired to the Top Right HUD)
     let touchTimer;
-    const apexLabel = document.getElementById('apex-label');
+    const triggerBtn = document.getElementById('god-trigger');
 
     const triggerAdmin = () => {
-        const adminHandle = prompt("ADMIN: Enter exact paid @handle:");
+        const adminHandle = prompt("ADMIN: Exact paid @handle:");
         if(adminHandle) {
-            const adminSecs = parseInt(prompt("ADMIN: Enter total seconds to lock in:"), 10);
+            const adminSecs = parseInt(prompt("ADMIN: Seconds to lock in:"), 10);
             if (!isNaN(adminSecs)) {
                 leaderNode.put({ name: adminHandle, seconds: adminSecs });
-                alert(`Throne overridden. ${adminHandle} now rules with ${adminSecs}s.`);
+                alert(`Locked. ${adminHandle} rules with ${adminSecs}s.`);
             }
         }
     };
 
-    apexLabel.addEventListener('touchstart', () => touchTimer = setTimeout(triggerAdmin, 20000));
-    apexLabel.addEventListener('mousedown', () => touchTimer = setTimeout(triggerAdmin, 20000));
+    triggerBtn.addEventListener('touchstart', () => touchTimer = setTimeout(triggerAdmin, 20000));
+    triggerBtn.addEventListener('mousedown', () => touchTimer = setTimeout(triggerAdmin, 20000));
     
     ['touchend', 'touchmove', 'mouseup', 'mouseleave'].forEach(evt => {
-        apexLabel.addEventListener(evt, () => clearTimeout(touchTimer));
+        triggerBtn.addEventListener(evt, () => clearTimeout(touchTimer));
     });
 })();
 </script>
