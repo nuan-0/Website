@@ -10,6 +10,7 @@
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* Film Grain Overlay */
     body::after {
       content: ""; position: fixed; inset: 0;
       background: url('data:image/svg+xml;utf8,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.06%22/%3E%3C/svg%3E');
@@ -20,13 +21,11 @@
       background: radial-gradient(circle at 50% -20%, #111 0%, var(--bg) 80%);
       color: #eaeaea; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       display: flex; align-items: center; justify-content: center;
-      /* Optimized for mobile dynamic address bars */
-      height: 100vh; height: 100dvh; 
-      overflow: hidden; user-select: none;
+      height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
     }
 
-    /* --- THE LOBBY --- */
-    .container { max-width: 500px; padding: 20px; z-index: 10; text-align: center; transition: opacity 0.8s ease; }
+    /* --- LOBBY --- */
+    .container { max-width: 500px; padding: 20px; z-index: 10; text-align: center; }
     .code { color: #444; font-size: 0.75rem; margin-bottom: 20px; letter-spacing: 4px; text-transform: uppercase; }
     h1 { font-weight: 400; font-size: 2rem; letter-spacing: -1px; }
     p { color: #666; margin-top: 10px; font-weight: 300; }
@@ -36,129 +35,88 @@
       margin-top: 40px; background: transparent; border: 1px solid #222; color: #888;
       padding: 14px 35px; letter-spacing: 3px; text-transform: uppercase;
       cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-      border-radius: 1px; font-size: 0.7rem; position: relative; overflow: hidden;
-      touch-action: manipulation;
+      border-radius: 1px; font-size: 0.7rem; touch-action: manipulation;
     }
-    .btn-premium:hover { border-color: var(--lilac); color: var(--bg); background: var(--lilac); box-shadow: 0 0 30px rgba(216, 180, 254, 0.2); }
+    .btn-premium:hover { border-color: var(--lilac); color: var(--bg); background: var(--lilac); }
 
-    /* --- THE APEX ROOM --- */
+    /* --- APEX ROOM --- */
     #wait-overlay {
       display: none; position: fixed; inset: 0; background: transparent;
       z-index: 50; flex-direction: column; align-items: center; justify-content: center;
-      opacity: 0; animation: cinematicFadeIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      perspective: 1200px; /* Perspective moved here to fix mobile clipping */
+      perspective: 1200px;
     }
 
-    @keyframes cinematicFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-
-    /* Decoupled 3D Wrapper */
+    /* Outer Wrapper handles Tilt */
     .stage-wrapper {
-      transform-style: preserve-3d;
-      transition: transform 0.1s ease-out;
+      transform-style: preserve-3d; transition: transform 0.1s ease-out;
       display: flex; align-items: center; justify-content: center;
     }
 
-    /* Strict Containment Field */
+    /* Glass Stage handles Overflow */
     .glass-stage {
       position: relative; width: 85vw; max-width: 420px; height: 65vh; max-height: 580px;
       background: linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.5) 100%);
       border: 1px solid rgba(255, 255, 255, 0.04);
-      border-top: 1px solid rgba(216, 180, 254, 0.3); 
-      border-left: 1px solid rgba(216, 180, 254, 0.1);
-      border-radius: 4px;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.9), inset 0 0 40px rgba(216, 180, 254, 0.03);
+      border-top: 1px solid rgba(216, 180, 254, 0.3); border-left: 1px solid rgba(216, 180, 254, 0.1);
+      border-radius: 4px; box-shadow: 0 40px 100px rgba(0,0,0,0.9), inset 0 0 40px rgba(216, 180, 254, 0.03);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      overflow: hidden; /* Absolute quarantine zone */
-      /* Transform zero ensures iOS respects overflow hidden */
-      transform: translateZ(0); 
+      overflow: hidden; transform: translateZ(0); /* Fixes iOS overflow bug */
     }
 
     .ambient-glow {
       position: absolute; width: 300px; height: 300px;
       background: radial-gradient(circle, rgba(216, 180, 254, 0.08) 0%, transparent 70%);
-      top: 50%; left: 50%; transform: translate(-50%, -50%);
-      pointer-events: none; z-index: 0;
+      top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 0;
     }
 
-    /* The Quantum Target */
     #bouncing-box {
       position: absolute; width: 24px; height: 24px;
       display: flex; align-items: center; justify-content: center;
       will-change: transform; z-index: 2; top: 0; left: 0;
     }
-    .core-inner, .core-outer {
-      position: absolute; border: 1px solid var(--lilac);
-      box-shadow: 0 0 20px rgba(216, 180, 254, 0.4);
-    }
+    .core-inner, .core-outer { position: absolute; border: 1px solid var(--lilac); box-shadow: 0 0 20px rgba(216, 180, 254, 0.4); }
     .core-inner { width: 100%; height: 100%; animation: spin 4s linear infinite; }
     .core-outer { width: 160%; height: 160%; animation: spinReverse 8s linear infinite; opacity: 0.3; }
     
     @keyframes spin { 100% { transform: rotate(360deg); } }
     @keyframes spinReverse { 100% { transform: rotate(-360deg); } }
 
-    /* 3D Share Ribbon */
     .share-ribbon {
-      position: absolute; top: 40px; left: -8px;
-      background: var(--lilac); color: var(--bg);
-      padding: 6px 18px; font-size: 0.55rem; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
-      box-shadow: 10px 10px 30px rgba(0,0,0,0.8);
-      border-top-right-radius: 2px; border-bottom-right-radius: 2px;
-      transform-origin: left center; transform: perspective(200px) rotateY(20deg);
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 10;
-    }
-    .share-ribbon::before {
-      content: ''; position: absolute; top: 100%; left: 0;
-      border-top: 8px solid rgba(255,255,255,0.4); border-left: 8px solid transparent; mix-blend-mode: overlay;
+      position: absolute; top: 40px; left: -8px; background: var(--lilac); color: var(--bg);
+      padding: 6px 18px; font-size: 0.55rem; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer; transform: perspective(200px) rotateY(20deg);
+      transition: all 0.4s ease; z-index: 10;
     }
     .share-ribbon:hover { transform: perspective(200px) rotateY(0deg) translateX(5px); background: #fff; }
 
-    /* PRO-TIER HUD */
     .record-hud {
-      position: absolute; top: 25px; right: 25px;
-      display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
-      cursor: crosshair; z-index: 10;
-      -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+      position: absolute; top: 25px; right: 25px; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 4px; z-index: 10; -webkit-user-select: none; user-select: none;
     }
     .hud-label { font-size: 0.45rem; color: #555; letter-spacing: 4px; text-transform: uppercase; }
-    .hud-handle {
-      font-size: 0.75rem; color: #fff; letter-spacing: 2px;
-      text-shadow: 0 0 20px rgba(216, 180, 254, 0.4); font-weight: 600;
-    }
-    .hud-time { font-size: 0.85rem; color: var(--lilac); font-family: monospace; letter-spacing: 2px; opacity: 0.8; }
+    .hud-handle { font-size: 0.75rem; color: #fff; letter-spacing: 2px; font-weight: 600; }
+    .hud-time { font-size: 0.85rem; color: var(--lilac); font-family: monospace; letter-spacing: 2px; }
 
     .philosophy-text {
       position: absolute; bottom: 40px; left: 0; right: 0; color: #333; font-size: 0.5rem;
       letter-spacing: 8px; text-transform: uppercase; text-align: center; pointer-events: none; z-index: 1;
     }
 
-    /* Custom Modal */
     #custom-modal {
       display: none; position: absolute; inset: 0; background: rgba(2,2,2,0.9);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      z-index: 50; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
-      opacity: 0; transition: opacity 0.4s ease; text-align: center;
+      backdrop-filter: blur(8px); z-index: 50; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity 0.4s ease;
     }
     .modal-text { font-size: 0.65rem; color: #888; letter-spacing: 2px; line-height: 2.5; text-transform: uppercase; margin-bottom: 30px; }
-    .modal-highlight { color: #fff; text-shadow: 0 0 15px var(--lilac); font-weight: bold; }
-    .modal-btn { background: var(--lilac); color: var(--bg); padding: 10px 30px; border: none; font-size: 0.6rem; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; touch-action: manipulation; }
+    .modal-btn { background: var(--lilac); color: var(--bg); padding: 10px 30px; border: none; font-size: 0.6rem; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; }
 
-    /* FOOTER */
     .footer-dock {
       position: absolute; bottom: 40px; left: 0; width: 100%;
       display: flex; flex-direction: column; align-items: center; gap: 20px;
       opacity: 0; animation: fadeUp 2s 1s forwards; z-index: 10;
     }
     @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
-
-    .buy-throne-btn {
-      background: none; border: 1px solid #222; color: #555;
-      padding: 10px 30px; font-size: 0.55rem; letter-spacing: 4px;
-      text-transform: uppercase; cursor: pointer; border-radius: 1px; transition: 0.4s; touch-action: manipulation;
-    }
-    .buy-throne-btn:hover { border-color: var(--lilac); color: var(--lilac); }
-    .sponsor-link { font-size: 0.45rem; color: #444; letter-spacing: 4px; text-transform: uppercase; text-decoration: none; transition: 0.3s; }
-    .sponsor-link:hover { color: var(--lilac); }
+    .buy-throne-btn { background: none; border: 1px solid #222; color: #555; padding: 10px 30px; font-size: 0.55rem; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -167,12 +125,11 @@
     <div class="code">Error 369</div>
     <h1>Something is being built.</h1>
     <p>QuantumNuan is currently under Construction.</p>
-    <div class="prayer">Pray for its early Revival.<br>We are counting on your prayers, here at QuantumNuan HQ.</div>
+    <div class="prayer">Pray for its early Revival.</div>
     <button id="start-btn" class="btn-premium">Prove Your Worth</button>
   </div>
 
   <div id="wait-overlay">
-    
     <div class="stage-wrapper" id="stage-wrapper">
       <div class="glass-stage" id="stage">
         <div class="ambient-glow"></div>
@@ -184,19 +141,11 @@
           <div class="hud-time" id="display-time">0:00</div>
         </div>
         
-        <div id="bouncing-box">
-          <div class="core-outer"></div>
-          <div class="core-inner"></div>
-        </div>
-        
+        <div id="bouncing-box"><div class="core-outer"></div><div class="core-inner"></div></div>
         <div class="philosophy-text">Time is an illusion.<br><br>Do not blink.</div>
 
         <div id="custom-modal">
-          <div class="modal-text">
-            Target Authority: <span class="modal-highlight" id="modal-price">₹0</span><br><br>
-            DM <span class="modal-highlight">@QuantumNuan</span> on X.<br>
-            Manual verification applies.
-          </div>
+          <div class="modal-text">Target Authority: <span id="modal-price" style="color:#fff;">₹0</span><br><br>DM @QuantumNuan on X.</div>
           <button class="modal-btn" onclick="closeModal()">Understood</button>
         </div>
       </div>
@@ -204,177 +153,68 @@
 
     <div class="footer-dock">
       <button class="buy-throne-btn" id="buy-btn">Buy Immortality (₹...)</button>
-      <a href="https://x.com/quantumnuan" target="_blank" class="sponsor-link">Advertise Here. Contact @QuantumNuan</a>
+      <a href="https://x.com/quantumnuan" target="_blank" style="color:#444; font-size:0.45rem; text-decoration:none; letter-spacing:4px; text-transform:uppercase;">Contact @QuantumNuan</a>
     </div>
   </div>
 
 <script>
 (() => {
-    // 1. Core Network
     const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
-    const db = gun.get('quantum-nuan-apex-v5'); 
-    const leaderNode = db.get('apex');
+    const leaderNode = gun.get('quantum-nuan-apex-v6').get('apex');
 
-    let bestSecs = 0; 
-    let myTimer = null;
-    let mySecs = 0;
-    let boxAnimFrame;
-
-    // 2. Local State Sync
-    const cachedLeader = JSON.parse(localStorage.getItem('qn-apex-v5'));
-    if(cachedLeader) {
-        bestSecs = cachedLeader.seconds;
-        updateLeaderUI(cachedLeader.name, bestSecs);
-    }
+    let bestSecs = 0, myTimer = null, mySecs = 0, boxAnimFrame;
+    const box = document.getElementById('bouncing-box'), stage = document.getElementById('stage'), wrapper = document.getElementById('stage-wrapper');
+    const phi = 1.618; let x = 0, y = 0, dx = 1.5 * phi, dy = 1.5;
 
     leaderNode.on((data) => {
         if (data && data.seconds > bestSecs) {
             bestSecs = data.seconds;
-            localStorage.setItem('qn-apex-v5', JSON.stringify(data));
-            updateLeaderUI(data.name, bestSecs);
+            document.getElementById('display-handle').innerText = data.name;
+            document.getElementById('display-time').innerText = formatTime(bestSecs);
+            document.getElementById('buy-btn').innerText = `Buy Immortality (₹${bestSecs + 1})`;
+            document.getElementById('modal-price').innerText = `₹${bestSecs + 1}`;
         }
     });
 
-    function updateLeaderUI(name, seconds) {
-        document.getElementById('display-handle').innerText = name;
-        document.getElementById('display-time').innerText = formatTime(seconds);
-        const cost = seconds + 1;
-        document.getElementById('buy-btn').innerText = `Buy Immortality (₹${cost})`;
-        document.getElementById('modal-price').innerText = `₹${cost}`;
-    }
-
-    function formatTime(s) {
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-    }
-
-    // 3. Mathematical Physics & Dynamic Bounds
-    const box = document.getElementById('bouncing-box');
-    const stage = document.getElementById('stage');
-    const stageWrapper = document.getElementById('stage-wrapper');
-    
-    let x = 0; let y = 0;
-    let stageWidth = 0; let stageHeight = 0;
-    const boxSize = 24;
-    const phi = 1.618; let dx = 1.5 * phi; let dy = 1.5;       
-
-    // Recalculate strict walls on resize (Mobile Toolbar fix)
-    function calculateBounds() {
-        stageWidth = stage.clientWidth;
-        stageHeight = stage.clientHeight;
-        // Clamp box if screen shrank
-        if (x > stageWidth - boxSize) x = Math.max(0, stageWidth - boxSize);
-        if (y > stageHeight - boxSize) y = Math.max(0, stageHeight - boxSize);
-    }
-    window.addEventListener('resize', calculateBounds);
-
     function animateBox() {
-        const maxX = stageWidth - boxSize; 
-        const maxY = stageHeight - boxSize;
-        
+        const maxX = stage.clientWidth - 24, maxY = stage.clientHeight - 24;
         x += dx; y += dy;
-        
-        // Strict boundary reflections
-        if (x >= maxX) { x = maxX; dx = -Math.abs(dx); }
-        else if (x <= 0) { x = 0; dx = Math.abs(dx); }
-        
-        if (y >= maxY) { y = maxY; dy = -Math.abs(dy); }
-        else if (y <= 0) { y = 0; dy = Math.abs(dy); }
-        
-        // translate3d forces hardware acceleration for smooth mobile rendering
+        if (x >= maxX) { x = maxX; dx = -Math.abs(dx); } else if (x <= 0) { x = 0; dx = Math.abs(dx); }
+        if (y >= maxY) { y = maxY; dy = -Math.abs(dy); } else if (y <= 0) { y = 0; dy = Math.abs(dy); }
         box.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         boxAnimFrame = requestAnimationFrame(animateBox);
     }
 
-    // 3D Parallax applied to the WRAPPER, not the glass (fixes clipping mask)
-    document.addEventListener('mousemove', (e) => {
-        if(document.getElementById('wait-overlay').style.display === 'flex') {
-            const xAxis = (window.innerWidth / 2 - e.pageX) / 40;
-            const yAxis = (window.innerHeight / 2 - e.pageY) / 40;
-            stageWrapper.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-        }
-    });
-
-    // 4. Initialization
     document.getElementById('start-btn').addEventListener('click', () => {
         const h = prompt("Identity (@handle):");
         if (!h) return;
-        const handle = h.startsWith('@') ? h : '@' + h;
-        
         document.getElementById('lobby').style.display = 'none';
-        const overlay = document.getElementById('wait-overlay');
-        overlay.style.display = 'flex';
-        
-        mySecs = 0;
-        
-        // Let DOM render, measure exact bounds, then fire physics
-        setTimeout(() => {
-            calculateBounds();
-            x = Math.random() * (stageWidth - boxSize);
-            y = Math.random() * (stageHeight - boxSize);
-            animateBox();
-        }, 50);
-
-        myTimer = setInterval(() => {
-            mySecs++;
-            if (mySecs > bestSecs) { leaderNode.put({ name: handle, seconds: mySecs }); }
-        }, 1000);
+        document.getElementById('wait-overlay').style.display = 'flex';
+        setTimeout(() => { x = Math.random() * (stage.clientWidth - 24); y = Math.random() * (stage.clientHeight - 24); animateBox(); }, 100);
+        myTimer = setInterval(() => { mySecs++; if (mySecs > bestSecs) leaderNode.put({ name: h, seconds: mySecs }); }, 1000);
     });
 
-    // 5. Commerce Modal
-    document.getElementById('buy-btn').addEventListener('click', () => {
-        const modal = document.getElementById('custom-modal');
-        modal.style.display = 'flex';
-        setTimeout(() => modal.style.opacity = '1', 10);
+    document.getElementById('buy-btn').addEventListener('click', () => { 
+        const m = document.getElementById('custom-modal'); m.style.display = 'flex'; setTimeout(() => m.style.opacity = '1', 10); 
     });
-    window.closeModal = function() {
-        const modal = document.getElementById('custom-modal');
-        modal.style.opacity = '0';
-        setTimeout(() => modal.style.display = 'none', 400);
-    }
+    window.closeModal = () => { const m = document.getElementById('custom-modal'); m.style.opacity = '0'; setTimeout(() => m.style.display = 'none', 400); };
+    window.shareTrap = () => { navigator.share ? navigator.share({url: window.location.href}) : alert("Link copied."); };
 
-    // 6. Share API
-    window.shareTrap = async function() {
-        try {
-            if (navigator.share) await navigator.share({ title: 'QuantumNuan Room', url: window.location.href });
-            else { navigator.clipboard.writeText(window.location.href); alert("Link copied."); }
-        } catch (err) {}
-    };
-
-    // 7. Guillotine
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden && myTimer) location.reload();
+    document.addEventListener('mousemove', (e) => {
+        const xAxis = (window.innerWidth / 2 - e.pageX) / 45, yAxis = (window.innerHeight / 2 - e.pageY) / 45;
+        wrapper.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
     });
-    document.addEventListener('contextmenu', e => e.preventDefault());
 
-    // 8. FIXED GOD MODE (5-Second Secure Touch)
-    let touchTimer;
-    const triggerBtn = document.getElementById('god-trigger');
+    document.addEventListener("visibilitychange", () => { if (document.hidden && myTimer) location.reload(); });
+    function formatTime(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; }
 
-    const triggerAdmin = () => {
-        const adminHandle = prompt("ADMIN: Exact paid @handle:");
-        if(adminHandle) {
-            const adminSecs = parseInt(prompt("ADMIN: Seconds to lock in:"), 10);
-            if (!isNaN(adminSecs)) {
-                leaderNode.put({ name: adminHandle, seconds: adminSecs });
-                alert(`Locked. ${adminHandle} reigns with ${adminSecs}s.`);
-            }
-        }
-    };
-
-    const startAdminTimer = (e) => {
-        e.preventDefault(); 
-        touchTimer = setTimeout(triggerAdmin, 5000);
-    };
-    const cancelAdminTimer = () => clearTimeout(touchTimer);
-
-    triggerBtn.addEventListener('touchstart', startAdminTimer, {passive: false});
-    triggerBtn.addEventListener('mousedown', startAdminTimer);
-    
-    window.addEventListener('touchend', cancelAdminTimer);
-    window.addEventListener('mouseup', cancelAdminTimer);
-    window.addEventListener('touchmove', cancelAdminTimer);
+    // Admin Backdoor
+    let t; const g = document.getElementById('god-trigger');
+    g.addEventListener('touchstart', (e) => { e.preventDefault(); t = setTimeout(() => {
+        const n = prompt("Admin Handle:"), s = parseInt(prompt("Seconds:"));
+        if(n && s) leaderNode.put({name: n, seconds: s});
+    }, 5000); }, {passive: false});
+    window.addEventListener('touchend', () => clearTimeout(t));
 })();
 </script>
 </body>
