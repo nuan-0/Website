@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quantum Nuan | The Apex</title>
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
-    :root { --lilac: #d8b4fe; --bg: #020202; }
+    :root { --lilac: #d8b4fe; --bg: #020202; --text: #eaeaea; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body::after {
@@ -17,13 +18,17 @@
 
     body {
       background: radial-gradient(circle at 50% -20%, #111 0%, var(--bg) 80%);
-      color: #eaeaea; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       display: flex; align-items: center; justify-content: center;
       height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
     }
 
     /* --- LOBBY --- */
-    .container { max-width: 550px; padding: 20px; z-index: 10; text-align: center; }
+    .container { 
+      max-width: 550px; padding: 20px; z-index: 10; text-align: center; 
+      max-height: 100vh; overflow-y: auto; scrollbar-width: none; 
+    }
+    .container::-webkit-scrollbar { display: none; }
     .code { color: #444; font-size: 0.7rem; margin-bottom: 10px; letter-spacing: 5px; text-transform: uppercase; }
     
     .lobby-apex-display {
@@ -36,7 +41,7 @@
     .apex-current-name { font-size: 1.2rem; color: var(--lilac); letter-spacing: 2px; margin-top: 5px; }
 
     .btn-premium {
-      margin-top: 30px; background: transparent; border: 1px solid #222; color: #888;
+      margin-top: 10px; background: transparent; border: 1px solid #222; color: #888;
       padding: 14px 35px; letter-spacing: 3px; text-transform: uppercase;
       cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       border-radius: 1px; font-size: 0.7rem;
@@ -44,11 +49,33 @@
     .btn-premium:hover { border-color: var(--lilac); color: var(--bg); background: var(--lilac); }
 
     .protocol-box {
-      margin-top: 40px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;
+      margin-top: 30px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;
       border-left: 1px solid #222; padding-left: 20px;
     }
     .protocol-step { font-size: 0.6rem; color: #444; letter-spacing: 1px; line-height: 2; text-transform: uppercase; margin-bottom: 10px; }
     .protocol-step span { color: #888; }
+
+    /* --- THE FOCUS TRAP --- */
+    .focus-trap-box {
+      margin-top: 30px; padding: 20px;
+      border: 1px solid rgba(216, 180, 254, 0.1);
+      background: rgba(255, 255, 255, 0.01);
+      backdrop-filter: blur(5px);
+    }
+    .focus-label { font-size: 0.5rem; color: #555; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px; }
+    .focus-timer { 
+      font-size: 2.5rem; font-weight: 800; color: var(--text); 
+      font-variant-numeric: tabular-nums; letter-spacing: 2px; margin-bottom: 20px; 
+    }
+    .focus-controls { display: flex; gap: 10px; justify-content: center; }
+    .btn-focus {
+      background: transparent; border: 1px solid #222; color: #888;
+      padding: 8px 20px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: all 0.3s ease; font-size: 0.6rem;
+    }
+    .btn-focus:hover { border-color: var(--lilac); color: var(--lilac); }
+    .btn-focus.active-state { border-color: var(--lilac); color: var(--lilac); }
+    #focus-message { font-size: 0.55rem; color: var(--lilac); margin-top: 15px; letter-spacing: 2px; height: 10px; text-transform: uppercase; font-weight: bold;}
 
     /* --- APEX ROOM --- */
     #wait-overlay {
@@ -99,7 +126,8 @@
       opacity: 0; animation: fadeUp 2s 1s forwards; z-index: 10;
     }
     @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
-    .buy-throne-btn { background: none; border: 1px solid #222; color: #555; padding: 10px 30px; font-size: 0.55rem; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; }
+    .buy-throne-btn { background: none; border: 1px solid #222; color: #555; padding: 10px 30px; font-size: 0.55rem; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
+    .buy-throne-btn:hover { border-color: var(--lilac); color: var(--lilac); }
   </style>
 </head>
 <body>
@@ -116,11 +144,23 @@
     <button id="start-btn" class="btn-premium">Wait with US</button>
 
     <div class="protocol-box">
-        <div class="protocol-step"><span>01.</span> Tap wait with us,  Enter Your Handle you want to promote.</div>
+        <div class="protocol-step"><span>01.</span> Tap wait with us, Enter Your Handle you want to promote.</div>
         <div class="protocol-step"><span>02.</span> Surpass the current Handle by 1s to Carve your Handle/identity.</div>
         <div class="protocol-step"><span>03.</span> Patience is the currency. Wealth is the shortcut.</div>
-        <div class="protocol-step"><span>04</span> If you wnat to Promote your Handle for Free, press wait with us, watch for time more than current apex and your Handle will Replace curent one.</div>
+        <div class="protocol-step"><span>04.</span> If you want to Promote your Handle for Free, press wait with us, watch for time more than current apex and your Handle will Replace current one.</div>
     </div>
+
+    <div class="focus-trap-box">
+        <div class="focus-label">Initiation Test | Target: 10:00:0</div>
+        <div class="focus-timer" id="f-timer">00:00:0</div>
+        <div class="focus-controls">
+            <button class="btn-focus" id="f-start">Start</button>
+            <button class="btn-focus" id="f-stop">Snap</button>
+            <button class="btn-focus" id="f-reset">Reset</button>
+        </div>
+        <div id="focus-message"></div>
+    </div>
+
   </div>
 
   <div id="wait-overlay">
@@ -154,6 +194,7 @@
 
 <script>
 (() => {
+    // --- ORIGINAL GUN.JS LOGIC ---
     const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
     const leaderNode = gun.get('quantum-nuan-apex-v8').get('apex');
 
@@ -169,8 +210,8 @@
             document.getElementById('lobby-apex-name').innerText = handle;
             document.getElementById('display-handle').innerText = handle;
             document.getElementById('core-name-tag').innerText = handle;
-            document.getElementById('display-time').innerText = formatTime(bestSecs);
-            document.getElementById('buy-btn').innerText = `Show Your Handle,Buy in . (₹${bestSecs + 1})`;
+            document.getElementById('display-time').innerText = formatApexTime(bestSecs);
+            document.getElementById('buy-btn').innerText = `Show Your Handle, Buy in . (₹${bestSecs + 1})`;
             document.getElementById('modal-price').innerText = `₹${bestSecs + 1}`;
         }
     });
@@ -199,12 +240,13 @@
     window.closeModal = () => { const m = document.getElementById('custom-modal'); m.style.opacity = '0'; setTimeout(() => m.style.display = 'none', 400); };
 
     document.addEventListener('mousemove', (e) => {
+        if(document.getElementById('wait-overlay').style.display !== 'flex') return;
         const xAxis = (window.innerWidth / 2 - e.pageX) / 45, yAxis = (window.innerHeight / 2 - e.pageY) / 45;
         wrapper.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
     });
 
     document.addEventListener("visibilitychange", () => { if (document.hidden && myTimer) location.reload(); });
-    function formatTime(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; }
+    function formatApexTime(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; }
 
     // Admin Backdoor
     let t; const g = document.getElementById('god-trigger');
@@ -213,6 +255,76 @@
         if(n && s) leaderNode.put({name: n, seconds: s});
     }, 5000); }, {passive: false});
     window.addEventListener('touchend', () => clearTimeout(t));
+
+
+    // --- ADDED: THE FOCUS TRAP LOGIC ---
+    let fStartTime, fElapsedTime = 0, fTimerInterval, fIsRunning = false;
+    const fTimerDisplay = document.getElementById('f-timer');
+    const fStartBtn = document.getElementById('f-start');
+    const fStopBtn = document.getElementById('f-stop');
+    const fResetBtn = document.getElementById('f-reset');
+    const fMessage = document.getElementById('focus-message');
+
+    function formatFocusTime(ms) {
+        let seconds = Math.floor(ms / 1000);
+        let hundredths = Math.floor((ms % 1000) / 10);
+        let milliseconds = Math.floor(ms % 10);
+        return `${seconds.toString().padStart(2, '0')}:${hundredths.toString().padStart(2, '0')}:${milliseconds.toString().padStart(1, '0')}`;
+    }
+
+    function updateFocusDisplay() {
+        const now = performance.now();
+        fElapsedTime = now - fStartTime;
+        fTimerDisplay.textContent = formatFocusTime(fElapsedTime);
+        fTimerInterval = requestAnimationFrame(updateFocusDisplay);
+    }
+
+    fStartBtn.addEventListener('click', () => {
+        if (!fIsRunning) {
+            fIsRunning = true;
+            // If starting from 0
+            if(fElapsedTime === 0) fStartTime = performance.now();
+            // If resuming
+            else fStartTime = performance.now() - fElapsedTime; 
+            
+            updateFocusDisplay();
+            fMessage.textContent = "";
+            fStartBtn.classList.add('active-state');
+        }
+    });
+
+    fStopBtn.addEventListener('click', () => {
+        if (fIsRunning) {
+            fIsRunning = false;
+            cancelAnimationFrame(fTimerInterval);
+            fStartBtn.classList.remove('active-state');
+            
+            const finalTime = fTimerDisplay.textContent;
+            if (finalTime === "10:00:0") {
+                fMessage.innerHTML = "<span style='color:var(--lilac)'>PERFECTION. YOU MAY ENTER.</span>";
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#d8b4fe', '#ffffff', '#333333']
+                });
+            } else {
+                fMessage.textContent = "Focus Lost. Reset to try again.";
+                fMessage.style.color = "#888";
+            }
+        }
+    });
+
+    fResetBtn.addEventListener('click', () => {
+        fIsRunning = false;
+        cancelAnimationFrame(fTimerInterval);
+        fStartBtn.classList.remove('active-state');
+        fElapsedTime = 0;
+        fTimerDisplay.textContent = "00:00:0";
+        fMessage.textContent = "";
+        fMessage.style.color = "var(--lilac)";
+    });
+
 })();
 </script>
 </body>
