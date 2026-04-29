@@ -6,18 +6,19 @@
   <title>Quantum Nuan | The Apex</title>
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root { 
-        --lilac: #d8b4fe; 
-        --lilac-glow: rgba(216, 180, 254, 0.5);
-        --lilac-dim: rgba(216, 180, 254, 0.1);
+        --lilac: #C8A2C8; 
+        --lilac-glow: rgba(200, 162, 200, 0.6);
+        --lilac-dim: rgba(200, 162, 200, 0.15);
         --bg: #030303; 
         --text: #eaeaea; 
     }
     * { margin: 0; padding: 0; box-sizing: border-box; touch-action: pan-y; }
 
     body {
-      background: radial-gradient(circle at 30% 50%, #0a0a0a 0%, var(--bg) 100%);
+      background: var(--bg);
       color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
       display: flex; align-items: center; justify-content: center;
       height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
@@ -31,56 +32,40 @@
       pointer-events: none; z-index: 9999; mix-blend-mode: overlay;
     }
 
-    /* --- THE QUANTUM DIAL (LEGEND LEVEL) --- */
+    /* --- THE 3D WEBGL CANVAS --- */
+    #webgl-canvas {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 7000; pointer-events: none;
+    }
+
+    /* --- THE QUANTUM DIAL HITBOX & HTML LABELS --- */
     #dial-hitbox {
-        position: fixed; right: 0; top: 0; width: 120px; height: 100vh; z-index: 9000;
+        position: fixed; right: 0; top: 0; width: 150px; height: 100vh; z-index: 9000;
         touch-action: none; cursor: grab;
     }
     #dial-hitbox:active { cursor: grabbing; }
 
-    #quantum-dial {
-        position: fixed;
-        right: -400px; /* Hide center */
-        top: 50%;
-        margin-top: -350px;
-        width: 700px; height: 700px;
-        border-radius: 50%;
-        border: 1px solid var(--lilac-dim);
-        background: radial-gradient(circle at center, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.8) 100%);
-        box-shadow: -20px 0 60px rgba(0,0,0,0.9), inset 20px 0 40px rgba(216, 180, 254, 0.03);
-        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-        z-index: 8000;
-        transition: transform 0.1s linear;
+    #dial-ui-layer {
+        position: fixed; right: -400px; top: 50%; margin-top: -350px;
+        width: 700px; height: 700px; border-radius: 50%;
+        z-index: 8000; pointer-events: none;
         will-change: transform;
-    }
-
-    /* Dial Ticks (Futuristic details) */
-    .dial-tick {
-        position: absolute; top: 50%; left: 50%; width: 50%; height: 2px;
-        transform-origin: 0% 50%;
-    }
-    .dial-tick::after {
-        content: ''; position: absolute; right: 0; top: 0; width: 10px; height: 2px;
-        background: rgba(255,255,255,0.1);
     }
 
     .dial-label {
         position: absolute; top: 50%; left: 50%; width: 50%; height: 20px;
         transform-origin: 0% 50%; margin-top: -10px;
         display: flex; align-items: center; justify-content: flex-end;
-        padding-right: 40px;
+        padding-right: 120px; /* Push text outside the 3D ring */
         font-size: 0.65rem; letter-spacing: 4px; text-transform: uppercase;
-        color: #444; transition: all 0.3s ease;
+        color: rgba(255,255,255,0.3); transition: all 0.3s ease;
     }
     
     .dial-label span {
-        transform: rotate(180deg); /* Counter-rotate text so it faces correctly on the left arc */
-        display: inline-block;
+        transform: rotate(180deg); display: inline-block;
     }
 
     .dial-label.active {
-        color: var(--lilac); font-weight: 600;
-        text-shadow: 0 0 15px var(--lilac-glow);
+        color: var(--lilac); font-weight: 600; text-shadow: 0 0 15px var(--lilac-glow);
     }
 
     /* --- VIEW CONTAINERS --- */
@@ -88,7 +73,7 @@
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 10; padding-right: 80px; /* Make room for dial */
+        z-index: 10; padding-right: 80px;
     }
     .view-layer.active { opacity: 1; pointer-events: auto; }
 
@@ -99,10 +84,10 @@
 
     /* Shared Premium Elements */
     .glass-panel {
-        background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.6) 100%);
+        background: linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.8) 100%);
         border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid var(--lilac-dim);
-        box-shadow: 0 30px 60px rgba(0,0,0,0.8);
-        backdrop-filter: blur(15px); padding: 30px; border-radius: 4px; text-align: center;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.9);
+        backdrop-filter: blur(20px); padding: 30px; border-radius: 4px; text-align: center;
     }
     .btn-premium {
       background: transparent; border: 1px solid #333; color: #aaa;
@@ -119,25 +104,29 @@
     #cosmic-boundary {
         position: absolute; top: 50%; left: calc(50% - 40px); transform: translate(-50%, -50%);
         width: 350px; height: 350px; border-radius: 50%;
-        border: 1px dashed rgba(216, 180, 254, 0.2); pointer-events: none;
-    }
-    .sensor-auth-btn {
-        pointer-events: auto; background: var(--lilac); color: #000; font-weight: bold;
-        border: none; padding: 15px 40px; border-radius: 50px; font-size: 0.7rem; letter-spacing: 2px;
-        text-transform: uppercase; box-shadow: 0 0 30px var(--lilac-glow); cursor: pointer;
-        position: relative; z-index: 50;
+        border: 1px dashed rgba(200, 162, 200, 0.2); pointer-events: none;
     }
     
     .ripple {
-        position: absolute; border: 1px solid var(--lilac); border-radius: 50%;
+        position: absolute; border: 2px solid var(--lilac); border-radius: 50%;
         transform: translate(-50%, -50%); pointer-events: none;
-        animation: ripple-anim 0.8s ease-out forwards;
+        animation: ripple-anim 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        box-shadow: 0 0 20px var(--lilac-glow), inset 0 0 10px var(--lilac-glow);
     }
-    @keyframes ripple-anim { from { width: 0; height: 0; opacity: 1; } to { width: 400px; height: 400px; opacity: 0; } }
+    @keyframes ripple-anim { from { width: 0; height: 0; opacity: 1; } to { width: 500px; height: 500px; opacity: 0; } }
+
+    /* Cosmic Tap Counter HUD */
+    #cosmic-hud {
+        position: absolute; bottom: 40px; left: calc(50% - 40px); transform: translateX(-50%);
+        font-size: 0.5rem; letter-spacing: 4px; color: #555; text-transform: uppercase; text-align: center;
+    }
+    #cosmic-hud span { color: var(--lilac); font-weight: bold; }
 
   </style>
 </head>
 <body>
+
+  <canvas id="webgl-canvas"></canvas>
 
   <canvas id="cosmic-canvas"></canvas>
 
@@ -162,28 +151,95 @@
             <button class="btn-premium" id="f-start">Start</button>
             <button class="btn-premium" id="f-stop">Snap</button>
         </div>
-        <div id="focus-message" style="margin-top:20px; font-size:0.6rem; color:var(--lilac); text-transform:uppercase; letter-spacing:2px; height:15px;"></div>
       </div>
   </div>
 
   <div id="view-cosmic" class="view-layer" style="pointer-events: auto;">
       <div id="cosmic-boundary"></div>
-      <button class="sensor-auth-btn" id="init-sensors">Initialize Sensors</button>
-      <div id="cosmic-hint" style="display:none; position:absolute; bottom:50px; font-size:0.6rem; color:#666; letter-spacing:3px; text-transform:uppercase; text-align:center;">
-          Shake Device <br> <span style="color:var(--lilac)">or tap anywhere to simulate</span>
-      </div>
+      <div id="cosmic-hud">Kinetic Taps: <span id="tap-display">0</span></div>
   </div>
 
   <div id="dial-hitbox"></div>
-  <div id="quantum-dial">
+  <div id="dial-ui-layer">
       </div>
 
 <script>
 (() => {
     /* ==========================================
-       1. QUANTUM DIAL PHYSICS (THE JOG WHEEL)
+       1. THREE.JS LEGEND-LEVEL 3D DIAL
        ========================================== */
-    const dial = document.getElementById('quantum-dial');
+    const canvas3D = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 50;
+    
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Dial Group to hold 3D meshes
+    const dialGroup = new THREE.Group();
+    // Position it off-screen to the right, similar to the CSS version
+    const offScreenRightX = (window.innerWidth / 30); // Rough approximation based on screen aspect
+    dialGroup.position.set(offScreenRightX, 0, 0); 
+    scene.add(dialGroup);
+
+    // High-End Glass Material (MeshPhysicalMaterial)
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x000000,
+        metalness: 0.9,
+        roughness: 0.1,
+        envMapIntensity: 1.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        transparent: true,
+        opacity: 0.8,
+    });
+
+    // Outer Glass Torus
+    const torusGeo = new THREE.TorusGeometry(20, 2, 32, 100);
+    const outerTorus = new THREE.Mesh(torusGeo, glassMaterial);
+    dialGroup.add(outerTorus);
+
+    // Inner Glowing Lilac Wireframe Torus
+    const wireGeo = new THREE.TorusGeometry(20, 0.5, 16, 50);
+    const wireMat = new THREE.MeshBasicMaterial({ 
+        color: 0xC8A2C8, // Lilac
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3
+    });
+    const innerTorus = new THREE.Mesh(wireGeo, wireMat);
+    dialGroup.add(innerTorus);
+
+    // Add a glowing core indicator on the left edge of the ring
+    const coreGeo = new THREE.SphereGeometry(0.8, 16, 16);
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xC8A2C8 });
+    const coreIndicator = new THREE.Mesh(coreGeo, coreMat);
+    coreIndicator.position.set(-20, 0, 0);
+    dialGroup.add(coreIndicator);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xC8A2C8, 2, 100);
+    pointLight.position.set(-10, 0, 20);
+    scene.add(pointLight);
+
+    // Resize handler for Three.js
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        dialGroup.position.set(window.innerWidth / 30, 0, 0);
+    });
+
+    /* ==========================================
+       2. UI SYNC & DRAG PHYSICS (Connect HTML to 3D)
+       ========================================== */
+    const dialUI = document.getElementById('dial-ui-layer');
     const hitbox = document.getElementById('dial-hitbox');
     const views = document.querySelectorAll('.view-layer');
     
@@ -195,77 +251,58 @@
     ];
 
     let currentAngle = 0;
-    const anglePerItem = 25; // Degrees between each menu item
+    const anglePerItem = 25; 
     let activeIndex = 0;
 
-    // Generate DOM for Dial
+    // Generate HTML Labels over the 3D object
     menuItems.forEach((item, index) => {
-        // Aesthetic ticks
-        const tick = document.createElement('div');
-        tick.className = 'dial-tick';
-        tick.style.transform = `rotate(${index * anglePerItem + 180}deg)`; // +180 to put on left side
-        dial.appendChild(tick);
-
-        // Labels
         const label = document.createElement('div');
         label.className = 'dial-label';
         label.style.transform = `rotate(${index * anglePerItem + 180}deg)`;
         label.innerHTML = `<span>${item.label}</span>`;
-        label.id = `label-${index}`;
-        dial.appendChild(label);
+        dialUI.appendChild(label);
     });
 
     function updateDialVisuals() {
-        dial.style.transform = `translateY(-50%) rotate(${currentAngle}deg)`;
+        // Sync HTML
+        dialUI.style.transform = `translateY(-50%) rotate(${currentAngle}deg)`;
         
-        // Calculate which item is closest to the center (0 degrees relative to the left edge)
-        // Since labels are placed at 180 + (i * 25), when currentAngle is rotated, 
-        // the item physically on the left center is where: (i * 25) + currentAngle = 0
+        // Sync THREE.js object (convert deg to rad)
+        dialGroup.rotation.z = -(currentAngle * Math.PI) / 180;
+
         let closestIndex = Math.round(-currentAngle / anglePerItem);
-        
-        // Clamp index
         if (closestIndex < 0) closestIndex = 0;
         if (closestIndex >= menuItems.length) closestIndex = menuItems.length - 1;
 
         if (closestIndex !== activeIndex) {
             activeIndex = closestIndex;
             
-            // Update Active Label
             document.querySelectorAll('.dial-label').forEach((el, i) => {
                 if (i === activeIndex) el.classList.add('active');
                 else el.classList.remove('active');
             });
 
-            // Update Views
             views.forEach(v => v.classList.remove('active'));
             document.getElementById(menuItems[activeIndex].id).classList.add('active');
 
-            // Trigger specifics
             if(menuItems[activeIndex].id === 'view-cosmic') startCosmicMode();
             else stopCosmicMode();
         }
     }
 
-    // Touch / Drag Physics
-    let startY = 0, isDragging = false, velocity = 0, lastY = 0;
-    let animationFrame;
+    // Drag Physics
+    let isDragging = false, velocity = 0, lastY = 0, animationFrame;
 
     function handleStart(y) {
-        isDragging = true;
-        startY = y;
-        lastY = y;
-        velocity = 0;
+        isDragging = true; lastY = y; velocity = 0;
         cancelAnimationFrame(animationFrame);
     }
-
     function handleMove(y) {
         if (!isDragging) return;
         const delta = y - lastY;
         lastY = y;
-        velocity = delta; // Simple velocity tracking
-        currentAngle += delta * 0.3; // Sensitivity
+        currentAngle += delta * 0.2; // Dial sensitivity
         
-        // Hard limits so wheel doesn't spin forever
         const maxAngle = 10;
         const minAngle = -(menuItems.length - 1) * anglePerItem - 10;
         if(currentAngle > maxAngle) currentAngle = maxAngle;
@@ -273,159 +310,154 @@
 
         updateDialVisuals();
     }
-
     function handleEnd() {
         isDragging = false;
-        // Snap to nearest item with easing
         function momentumLoop() {
             const targetAngle = -activeIndex * anglePerItem;
             const diff = targetAngle - currentAngle;
-            
             if (Math.abs(diff) < 0.1) {
-                currentAngle = targetAngle;
-                updateDialVisuals();
-                return;
+                currentAngle = targetAngle; updateDialVisuals(); return;
             }
-            
-            currentAngle += diff * 0.1; // Ease out
+            currentAngle += diff * 0.15;
             updateDialVisuals();
             animationFrame = requestAnimationFrame(momentumLoop);
         }
         momentumLoop();
     }
 
-    // Event Listeners for Dial
     hitbox.addEventListener('touchstart', e => handleStart(e.touches[0].clientY));
     hitbox.addEventListener('touchmove', e => handleMove(e.touches[0].clientY));
     hitbox.addEventListener('touchend', handleEnd);
-    
     hitbox.addEventListener('mousedown', e => handleStart(e.clientY));
     window.addEventListener('mousemove', e => { if(isDragging) handleMove(e.clientY); });
     window.addEventListener('mouseup', () => { if(isDragging) handleEnd(); });
 
-    // Init first frame
     updateDialVisuals();
 
 
     /* ==========================================
-       2. COSMIC COLLISION (FIXED & ROBUST)
+       3. COSMIC COLLISION (EXACT TAP PROTOCOL)
        ========================================== */
-    const canvas = document.getElementById('cosmic-canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas2D = document.getElementById('cosmic-canvas');
+    const ctx = canvas2D.getContext('2d');
     const cosmicView = document.getElementById('view-cosmic');
-    const authBtn = document.getElementById('init-sensors');
-    const hint = document.getElementById('cosmic-hint');
+    const tapDisplay = document.getElementById('tap-display');
     
     let balls = [];
     let cosmicLoop;
     let cosmicActive = false;
-    let boundaryRadius = 175; // Matches 350px CSS boundary
+    let boundaryRadius = 175; 
+    let tapCount = 0;
     
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    function resizeCanvas2D() {
+        canvas2D.width = window.innerWidth;
+        canvas2D.height = window.innerHeight;
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas2D);
+    resizeCanvas2D();
 
-    function startCosmicMode() {
-        cosmicActive = true;
-        if(balls.length > 0) runCosmicEngine();
-    }
-    function stopCosmicMode() {
-        cosmicActive = false;
-        cancelAnimationFrame(cosmicLoop);
-    }
+    function startCosmicMode() { cosmicActive = true; runCosmicEngine(); }
+    function stopCosmicMode() { cosmicActive = false; cancelAnimationFrame(cosmicLoop); }
 
-    // Spawn Logic
     function createRipple(x, y) {
         const r = document.createElement('div');
         r.className = 'ripple';
-        r.style.left = x + 'px';
-        r.style.top = y + 'px';
+        r.style.left = x + 'px'; r.style.top = y + 'px';
         cosmicView.appendChild(r);
-        setTimeout(() => r.remove(), 800);
+        setTimeout(() => r.remove(), 1000);
     }
 
-    function spawnBall(x, y, isInitial = false) {
+    function spawnBall(x, y) {
         balls.push({
-            x: x, y: y,
-            radius: 6,
-            vx: (Math.random() - 0.5) * (isInitial ? 8 : 12), // High initial energy
-            vy: (Math.random() - 0.5) * (isInitial ? 8 : 12)
+            x: x, y: y, radius: 6,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.5) * 8
         });
     }
 
-    // Physics Engine
+    // THE STRICT TAP PROTOCOL
+    cosmicView.addEventListener('click', () => {
+        if (!cosmicActive) return;
+        
+        tapCount++;
+        tapDisplay.innerText = tapCount;
+
+        const cx = (canvas2D.width / 2) - 40;
+        const cy = canvas2D.height / 2;
+
+        // Condition 1: 2 Taps -> Spawn Ripple & 1st Ball
+        if (tapCount === 2 && balls.length === 0) {
+            createRipple(cx, cy);
+            spawnBall(cx, cy);
+        }
+
+        // Condition 2: 10 more taps (12 total) -> Mitosis into 2
+        if (tapCount === 12 && balls.length === 1) {
+            let original = balls[0];
+            original.vx = -4; original.vy = -4; // Deflect original
+            spawnBall(original.x, original.y);  // Birth second
+            balls[1].vx = 4; balls[1].vy = 4;   // Shoot opposite
+        }
+    });
+
     function runCosmicEngine() {
         if(!cosmicActive) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas2D.width, canvas2D.height);
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-
-        // Shift center slightly left to account for dial
-        const offsetX = centerX - 40; 
+        const offsetX = (canvas2D.width / 2) - 40; 
+        const centerY = canvas2D.height / 2;
         
-        // Max capacity check (99% fill approximation)
         const areaBoundary = Math.PI * (boundaryRadius * boundaryRadius);
         const areaBall = Math.PI * (6 * 6);
-        const maxBalls = Math.floor((areaBoundary / areaBall) * 0.75); // 75% packing limit
+        const maxBalls = Math.floor((areaBoundary / areaBall) * 0.75);
 
+        // Reset if full
         if(balls.length >= maxBalls && balls.length > 0) {
-            // Screen is full -> Reset!
-            ctx.fillStyle = 'rgba(216, 180, 254, 0.5)';
-            ctx.fillRect(0,0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(200, 162, 200, 0.5)';
+            ctx.fillRect(0,0, canvas2D.width, canvas2D.height);
             balls = [];
+            tapCount = 0;
+            tapDisplay.innerText = tapCount;
             return requestAnimationFrame(runCosmicEngine);
         }
 
         for (let i = 0; i < balls.length; i++) {
             let b = balls[i];
-            b.x += b.vx;
-            b.y += b.vy;
+            b.x += b.vx; b.y += b.vy;
 
-            // Apply slight friction to calm them down over time
-            b.vx *= 0.99; b.vy *= 0.99;
-
-            // Circular Boundary Collision
             const dx = b.x - offsetX;
             const dy = b.y - centerY;
             const dist = Math.hypot(dx, dy);
 
             if (dist + b.radius > boundaryRadius) {
-                // Bounce back toward center
                 const angle = Math.atan2(dy, dx);
                 b.vx = -Math.cos(angle) * Math.abs(b.vx);
                 b.vy = -Math.sin(angle) * Math.abs(b.vy);
-                // Keep inside
                 b.x = offsetX + Math.cos(angle) * (boundaryRadius - b.radius);
                 b.y = centerY + Math.sin(angle) * (boundaryRadius - b.radius);
             }
 
-            // Ball to Ball Mitosis Collision
+            // COLLISION MITOSIS LOGIC (Only triggers when there are >= 2 balls)
             for (let j = i + 1; j < balls.length; j++) {
                 let b2 = balls[j];
                 let distBalls = Math.hypot(b.x - b2.x, b.y - b2.y);
                 
                 if (distBalls < b.radius + b2.radius) {
-                    // Deflect
                     b.vx *= -1; b.vy *= -1;
                     b2.vx *= -1; b2.vy *= -1;
                     
-                    // Mitosis!
-                    if(balls.length < maxBalls && Math.random() > 0.5) {
+                    // Mitosis on collision! (Limit spawn rate slightly for performance)
+                    if(balls.length < maxBalls && Math.random() > 0.3) {
                         spawnBall(b.x, b.y);
                     }
                 }
             }
 
-            // Render
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#d8b4fe';
+            ctx.fillStyle = '#C8A2C8';
             ctx.shadowBlur = 8;
-            ctx.shadowColor = 'var(--lilac)';
+            ctx.shadowColor = 'rgba(200, 162, 200, 0.8)';
             ctx.fill();
             ctx.shadowBlur = 0;
         }
@@ -433,70 +465,21 @@
         cosmicLoop = requestAnimationFrame(runCosmicEngine);
     }
 
-    // Input Handling (Shake & Tap)
-        function triggerShakeEvent() {
-        const cx = (canvas.width / 2) - 40;
-        const cy = canvas.height / 2;
-
-        if (balls.length === 0) {
-            createRipple(cx, cy);
-            spawnBall(cx, cy, true);
-            runCosmicEngine();
-        } else {
-            // Add massive energy on shake/tap
-            balls.forEach(b => {
-                b.vx += (Math.random() - 0.5) * 15;
-                b.vy += (Math.random() - 0.5) * 15;
-                
-                // KINETIC MITOSIS: If it moves too fast, it splits from the energy
-                if (Math.abs(b.vx) > 12 || Math.abs(b.vy) > 12) {
-                    b.vx *= 0.5; // Dampen the speed of the original
-                    b.vy *= 0.5;
-                    spawnBall(b.x, b.y); // Birth a new one
-                }
-            });
-        }
+    /* ==========================================
+       4. THREE.JS RENDER LOOP
+       ========================================== */
+    function render3D() {
+        requestAnimationFrame(render3D);
+        innerTorus.rotation.y += 0.005; // Idle floating animation
+        innerTorus.rotation.x += 0.002;
+        renderer.render(scene, camera);
     }
-
-    // Permission button for iOS / Sensors
-    authBtn.addEventListener('click', async () => {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const state = await DeviceMotionEvent.requestPermission();
-                if (state === 'granted') {
-                    window.addEventListener('devicemotion', handleMotion);
-                }
-            } catch (e) { console.error(e); }
-        } else {
-            // Non iOS 13+ devices
-            window.addEventListener('devicemotion', handleMotion);
-        }
-        
-        authBtn.style.display = 'none';
-        hint.style.display = 'block';
-    });
-
-    // Fallback: Tap anywhere on view to simulate shake
-    cosmicView.addEventListener('click', (e) => {
-        if(e.target === authBtn) return;
-        triggerShakeEvent();
-    });
-
-    function handleMotion(e) {
-        if(!cosmicActive || !e.accelerationIncludingGravity) return;
-        const acc = e.accelerationIncludingGravity;
-        const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
-        // Gravity is ~9.8, so normal rest is ~10. Shake is > 25.
-        if (total > 25) {
-            triggerShakeEvent();
-        }
-    }
+    render3D();
 
 
     /* ==========================================
-       3. TIME STOP & WAIT WITH US LOGIC
+       5. TIME STOP & WAIT WITH US LOGIC
        ========================================== */
-    // Focus Trap
     let fStartTime, fTimerInterval, fIsRunning = false;
     const fTimerDisplay = document.getElementById('f-timer');
     
@@ -514,7 +497,7 @@
     document.getElementById('f-stop').addEventListener('click', () => {
         if (fIsRunning) {
             fIsRunning = false; cancelAnimationFrame(fTimerInterval);
-            if(fTimerDisplay.textContent.startsWith("10:00")) confetti({colors: ['#d8b4fe', '#fff']});
+            if(fTimerDisplay.textContent.startsWith("10:00")) confetti({colors: ['#C8A2C8', '#fff']});
         }
     });
 
