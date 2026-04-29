@@ -434,7 +434,7 @@
     }
 
     // Input Handling (Shake & Tap)
-    function triggerShakeEvent() {
+        function triggerShakeEvent() {
         const cx = (canvas.width / 2) - 40;
         const cy = canvas.height / 2;
 
@@ -443,13 +443,21 @@
             spawnBall(cx, cy, true);
             runCosmicEngine();
         } else {
-            // Add energy on shake
+            // Add massive energy on shake/tap
             balls.forEach(b => {
-                b.vx += (Math.random() - 0.5) * 10;
-                b.vy += (Math.random() - 0.5) * 10;
+                b.vx += (Math.random() - 0.5) * 15;
+                b.vy += (Math.random() - 0.5) * 15;
+                
+                // KINETIC MITOSIS: If it moves too fast, it splits from the energy
+                if (Math.abs(b.vx) > 12 || Math.abs(b.vy) > 12) {
+                    b.vx *= 0.5; // Dampen the speed of the original
+                    b.vy *= 0.5;
+                    spawnBall(b.x, b.y); // Birth a new one
+                }
             });
         }
     }
+
 
     // Permission button for iOS / Sensors
     authBtn.addEventListener('click', async () => {
