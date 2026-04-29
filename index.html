@@ -6,499 +6,713 @@
   <title>Quantum Nuan | The Apex</title>
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root { 
-        --lilac: #C8A2C8; 
-        --lilac-glow: rgba(200, 162, 200, 0.6);
-        --lilac-dim: rgba(200, 162, 200, 0.15);
-        --bg: #030303; 
+        --lilac: #d8b4fe; 
+        --lilac-glow: rgba(216, 180, 254, 0.4);
+        --bg: #020202; 
         --text: #eaeaea; 
     }
     * { margin: 0; padding: 0; box-sizing: border-box; touch-action: pan-y; }
 
-    body {
-      background: var(--bg);
-      color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-      display: flex; align-items: center; justify-content: center;
-      height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Ambient Noise Overlay */
+    /* The aesthetic noise from your screenshot */
     body::after {
       content: ""; position: fixed; inset: 0;
-      background: url('data:image/svg+xml;utf8,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22 opacity=%220.04%22/%3E%3C/svg%3E');
-      pointer-events: none; z-index: 9999; mix-blend-mode: overlay;
+      background: url('data:image/svg+xml;utf8,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.06%22/%3E%3C/svg%3E');
+      pointer-events: none; z-index: 9999; mix-blend-mode: screen;
     }
 
-    /* --- THE 3D WEBGL CANVAS --- */
-    #webgl-canvas {
-        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 7000; pointer-events: none;
+    body {
+      background: radial-gradient(circle at 50% -20%, #111 0%, var(--bg) 80%);
+      color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
     }
 
-    /* --- THE QUANTUM DIAL HITBOX & HTML LABELS --- */
-    #dial-hitbox {
-        position: fixed; right: 0; top: 0; width: 150px; height: 100vh; z-index: 9000;
-        touch-action: none; cursor: grab;
-    }
-    #dial-hitbox:active { cursor: grabbing; }
-
-    #dial-ui-layer {
-        position: fixed; right: -400px; top: 50%; margin-top: -350px;
-        width: 700px; height: 700px; border-radius: 50%;
-        z-index: 8000; pointer-events: none;
+    /* --- PREMIUM RADIAL NAVIGATION --- */
+    #hero-dial-container {
+        position: fixed;
+        right: -300px; /* Hide center, only show arc */
+        top: 50%;
+        margin-top: -300px;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        border: 1px solid rgba(216, 180, 254, 0.1);
+        background: linear-gradient(145deg, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.6) 100%);
+        box-shadow: -15px 0 40px rgba(0,0,0,0.8), inset 5px 0 20px rgba(216, 180, 254, 0.05);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        display: flex;
+        align-items: center;
+        z-index: 9998;
+        transform: rotate(0deg);
+        transition: transform 0.1s linear; /* Responsive dragging */
         will-change: transform;
+    }
+
+    .dial-tick {
+        position: absolute; top: 50%; left: 50%; width: 50%; height: 2px;
+        transform-origin: 0% 50%;
+    }
+    .dial-tick::after {
+        content: ''; position: absolute; right: 0; top: 0; width: 10px; height: 1px;
+        background: rgba(216, 180, 254, 0.2);
     }
 
     .dial-label {
         position: absolute; top: 50%; left: 50%; width: 50%; height: 20px;
         transform-origin: 0% 50%; margin-top: -10px;
         display: flex; align-items: center; justify-content: flex-end;
-        padding-right: 120px; /* Push text outside the 3D ring */
+        padding-right: 40px;
         font-size: 0.65rem; letter-spacing: 4px; text-transform: uppercase;
-        color: rgba(255,255,255,0.3); transition: all 0.3s ease;
+        color: #444; transition: all 0.3s ease;
     }
     
-    .dial-label span {
-        transform: rotate(180deg); display: inline-block;
-    }
-
     .dial-label.active {
-        color: var(--lilac); font-weight: 600; text-shadow: 0 0 15px var(--lilac-glow);
+        color: var(--lilac); font-weight: bold;
+        text-shadow: 0 0 15px var(--lilac-glow);
     }
 
-    /* --- VIEW CONTAINERS --- */
-    .view-layer {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 10; padding-right: 80px;
+    /* Hitbox for user interaction - captures drags even if off center */
+    #dial-hitbox {
+        position: fixed; right: 0; top: 0; width: 120px; height: 100vh;
+        z-index: 9999; touch-action: none; cursor: grab;
     }
-    .view-layer.active { opacity: 1; pointer-events: auto; }
 
-    /* Home View */
-    .brand-title { font-size: 0.7rem; color: #555; letter-spacing: 8px; text-transform: uppercase; margin-bottom: 20px; }
-    .brand-hero { font-size: 1.8rem; font-weight: 300; letter-spacing: 2px; color: var(--text); }
-    .brand-hero span { color: var(--lilac); text-shadow: 0 0 20px var(--lilac-glow); }
-
-    /* Shared Premium Elements */
-    .glass-panel {
-        background: linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.8) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05); border-top: 1px solid var(--lilac-dim);
-        box-shadow: 0 30px 60px rgba(0,0,0,0.9);
-        backdrop-filter: blur(20px); padding: 30px; border-radius: 4px; text-align: center;
+    /* --- LOBBY LAYER (HOME VIEW) --- */
+    #lobby { 
+      max-width: 550px; padding: 20px; text-align: center; 
+      max-height: 100vh; overflow-y: auto; scrollbar-width: none; 
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.5s ease;
     }
-    .btn-premium {
-      background: transparent; border: 1px solid #333; color: #aaa;
-      padding: 12px 30px; letter-spacing: 3px; text-transform: uppercase;
-      cursor: pointer; transition: 0.4s; font-size: 0.65rem; margin-top: 15px;
-    }
-    .btn-premium:hover { border-color: var(--lilac); color: var(--lilac); box-shadow: 0 0 20px var(--lilac-dim); }
-
-    /* Focus Trap View */
-    .focus-timer { font-size: 3.5rem; font-weight: 200; font-variant-numeric: tabular-nums; letter-spacing: 2px; margin: 20px 0; color: #fff; }
+    #lobby::-webkit-scrollbar { display: none; }
+    .code { color: #444; font-size: 0.7rem; margin-bottom: 10px; letter-spacing: 5px; text-transform: uppercase; }
     
-    /* Cosmic Collision View */
-    #cosmic-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-    #cosmic-boundary {
-        position: absolute; top: 50%; left: calc(50% - 40px); transform: translate(-50%, -50%);
+    .view-section { display: none; margin-top: 20px; width: 100%; animation: fadeIn 0.8s ease; }
+    .view-section.active { display: flex; flex-direction: column; align-items: center;}
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .lobby-apex-display { margin: 20px 0; padding: 10px; border-top: 1px solid rgba(216, 180, 254, 0.1); border-bottom: 1px solid rgba(216, 180, 254, 0.1); width: 100%; max-width: 400px;}
+    .apex-current-label { font-size: 0.5rem; color: #555; letter-spacing: 3px; text-transform: uppercase; }
+    .apex-current-name { font-size: 1.2rem; color: var(--lilac); letter-spacing: 2px; margin-top: 5px; text-shadow: 0 0 10px var(--lilac-glow); }
+
+    .btn-premium {
+      margin-top: 10px; background: transparent; border: 1px solid #222; color: #888;
+      padding: 14px 35px; letter-spacing: 3px; text-transform: uppercase;
+      cursor: pointer; transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 1px; font-size: 0.7rem;
+    }
+    .btn-premium:hover { border-color: var(--lilac); color: var(--bg); background: var(--lilac); box-shadow: 0 0 20px var(--lilac-glow); }
+
+    /* --- THE FOCUS TRAP --- */
+    .focus-trap-box {
+      width: 100%; max-width: 350px; margin-top: 30px; padding: 20px;
+      border: 1px solid rgba(216, 180, 254, 0.1);
+      background: rgba(255, 255, 255, 0.01); backdrop-filter: blur(5px);
+      text-align: center;
+    }
+    .focus-timer { 
+      font-size: 3rem; font-weight: 800; color: var(--text); 
+      font-variant-numeric: tabular-nums; letter-spacing: 2px; margin-bottom: 20px; 
+      text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    }
+    .focus-controls { display: flex; gap: 10px; justify-content: center; }
+    .btn-focus {
+      background: transparent; border: 1px solid #222; color: #888;
+      padding: 8px 20px; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: all 0.3s ease; font-size: 0.6rem;
+    }
+    .btn-focus:hover { border-color: var(--lilac); color: var(--lilac); box-shadow: 0 0 15px var(--lilac-glow); }
+    .btn-focus.active-state { border-color: var(--lilac); color: var(--lilac); }
+    #focus-message { font-size: 0.55rem; color: var(--lilac); margin-top: 15px; letter-spacing: 2px; height: 10px; text-transform: uppercase; font-weight: bold;}
+
+    /* --- APEX ROOM --- */
+    #wait-overlay {
+      display: none; position: fixed; inset: 0; background: transparent;
+      z-index: 50; flex-direction: column; align-items: center; justify-content: center;
+      perspective: 1200px;
+    }
+    .stage-wrapper { transform-style: preserve-3d; transition: transform 0.1s ease-out; display: flex; align-items: center; justify-content: center; }
+    .glass-stage {
+      position: relative; width: 85vw; max-width: 420px; height: 65vh; max-height: 580px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.5) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-top: 1px solid rgba(216, 180, 254, 0.3); border-left: 1px solid rgba(216, 180, 254, 0.1);
+      border-radius: 4px; box-shadow: 0 40px 100px rgba(0,0,0,0.9), inset 0 0 40px rgba(216, 180, 254, 0.03);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      overflow: hidden; transform: translateZ(0);
+    }
+    #bouncing-box { position: absolute; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; will-change: transform; z-index: 2; top: 0; left: 0; }
+    .core-handle-text { position: absolute; white-space: nowrap; font-size: 0.4rem; color: var(--lilac); letter-spacing: 1px; text-transform: uppercase; bottom: -15px; opacity: 0.7; }
+    .core-inner, .core-outer { position: absolute; border: 1px solid var(--lilac); box-shadow: 0 0 10px var(--lilac-glow); }
+    .core-inner { width: 60%; height: 60%; animation: spin 4s linear infinite; }
+    .core-outer { width: 100%; height: 100%; animation: spinReverse 8s linear infinite; opacity: 0.3; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes spinReverse { 100% { transform: rotate(-360deg); } }
+    .record-hud { position: absolute; top: 25px; right: 25px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; z-index: 10; }
+    .hud-handle { font-size: 0.75rem; color: #fff; letter-spacing: 2px; font-weight: 600; text-shadow: 0 0 5px var(--lilac-glow); }
+    .hud-time { font-size: 0.85rem; color: var(--lilac); font-family: monospace; letter-spacing: 2px; text-shadow: 0 0 5px var(--lilac-glow); }
+    .footer-dock { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; opacity: 0; animation: fadeUp 2s 1s forwards; z-index: 10; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    .buy-throne-btn { background: none; border: 1px solid #222; color: #555; padding: 10px 30px; font-size: 0.55rem; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; transition: 0.3s; }
+    .buy-throne-btn:hover { border-color: var(--lilac); color: var(--lilac); box-shadow: 0 0 10px var(--lilac-glow); }
+
+    /* --- COSMIC COLLISION LAYER --- */
+    #cosmic-canvas {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        z-index: 10; cursor: crosshair; display: none; pointer-events: none;
+    }
+    #cosmic-ui {
+        position: fixed; inset: 0; z-index: 20;
+        pointer-events: none; display: none;
+    }
+    #boundary-circle {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
         width: 350px; height: 350px; border-radius: 50%;
-        border: 1px dashed rgba(200, 162, 200, 0.2); pointer-events: none;
+        border: 1px dashed rgba(216, 180, 254, 0.2); pointer-events: none;
+    }
+    .cosmic-hint {
+        position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+        font-size: 0.5rem; letter-spacing: 8px; color: #444; text-transform: uppercase; text-align: center;
     }
     
     .ripple {
-        position: absolute; border: 2px solid var(--lilac); border-radius: 50%;
+        position: absolute; border: 1px solid var(--lilac); border-radius: 50%;
         transform: translate(-50%, -50%); pointer-events: none;
-        animation: ripple-anim 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        box-shadow: 0 0 20px var(--lilac-glow), inset 0 0 10px var(--lilac-glow);
+        animation: ripple-out 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        box-shadow: 0 0 30px var(--lilac-glow), inset 0 0 20px var(--lilac-glow);
     }
-    @keyframes ripple-anim { from { width: 0; height: 0; opacity: 1; } to { width: 500px; height: 500px; opacity: 0; } }
-
-    /* Cosmic Tap Counter HUD */
-    #cosmic-hud {
-        position: absolute; bottom: 40px; left: calc(50% - 40px); transform: translateX(-50%);
-        font-size: 0.5rem; letter-spacing: 4px; color: #555; text-transform: uppercase; text-align: center;
-    }
-    #cosmic-hud span { color: var(--lilac); font-weight: bold; }
+    @keyframes ripple-out { from { width: 0; height: 0; opacity: 1; } to { width: 600px; height: 600px; opacity: 0; } }
 
   </style>
 </head>
 <body>
 
-  <canvas id="webgl-canvas"></canvas>
-
   <canvas id="cosmic-canvas"></canvas>
-
-  <div id="view-home" class="view-layer active">
-      <div class="brand-title">Error 369</div>
-      <div class="brand-hero">Something is being <span>built.</span></div>
-  </div>
-
-  <div id="view-wait" class="view-layer">
-      <div class="glass-panel" style="width: 320px;">
-        <div style="font-size: 0.5rem; color: #666; letter-spacing: 3px; text-transform: uppercase;">Current Apex</div>
-        <div id="lobby-apex-name" style="font-size: 1.5rem; color: var(--lilac); margin: 10px 0;">Vacant</div>
-        <button id="start-btn" class="btn-premium">Initiate Override</button>
-      </div>
-  </div>
-
-  <div id="view-stop" class="view-layer">
-      <div class="glass-panel" style="width: 350px;">
-        <div style="font-size: 0.5rem; color: #666; letter-spacing: 3px; text-transform: uppercase;">Discipline Check</div>
-        <div class="focus-timer" id="f-timer">00:00:0</div>
-        <div style="display: flex; gap: 10px; justify-content: center;">
-            <button class="btn-premium" id="f-start">Start</button>
-            <button class="btn-premium" id="f-stop">Snap</button>
-        </div>
-      </div>
-  </div>
-
-  <div id="view-cosmic" class="view-layer" style="pointer-events: auto;">
-      <div id="cosmic-boundary"></div>
-      <div id="cosmic-hud">Kinetic Taps: <span id="tap-display">0</span></div>
+  <div id="cosmic-ui">
+      <div id="boundary-circle"></div>
+      <div class="cosmic-hint">Initial Tap creates Ripple + <span style="color:var(--lilac)">2 Balls</span>. Collision Mitosis follows.</div>
   </div>
 
   <div id="dial-hitbox"></div>
-  <div id="dial-ui-layer">
+  <div id="hero-dial-container">
       </div>
+
+  <div class="container" id="lobby">
+    <div class="code">Error 369</div>
+    
+    <div id="section-home" class="view-section active">
+        <h1 style="font-weight: 300; font-size: 1.5rem; letter-spacing: 1px;">Something is being built.</h1>
+    </div>
+
+    <div id="section-wait" class="view-section">
+        <div class="lobby-apex-display">
+            <div class="apex-current-label">Current Apex</div>
+            <div class="apex-current-name" id="lobby-apex-name">Vacant</div>
+        </div>
+        <button id="start-btn" class="btn-premium">Wait with US</button>
+    </div>
+
+    <div id="section-stop" class="view-section">
+        <div class="focus-trap-box">
+            <div style="font-size: 0.5rem; color: #555; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; font-weight: bold;">Discipline Check | Target: 10:00:0</div>
+            <div class="focus-timer" id="f-timer">00:00:0</div>
+            <div class="focus-controls">
+                <button class="btn-focus" id="f-start">Start</button>
+                <button class="btn-focus" id="f-stop">Snap</button>
+                <button class="btn-focus" id="f-reset">Reset</button>
+            </div>
+            <div id="focus-message"></div>
+        </div>
+    </div>
+
+    <div class="protocol-box" style="margin-top: 50px;">
+        <div class="protocol-step"><span>01.</span> Use Dial to Navigate Modes.</div>
+        <div class="protocol-step"><span>02.</span> Tapping cosmic creates 2 balls inside the boundary.</div>
+        <div class="protocol-step"><span>03.</span> Patience is the currency. wealth is the shortcut.</div>
+    </div>
+  </div>
+
+  <div id="wait-overlay">
+    <div class="stage-wrapper" id="stage-wrapper">
+      <div class="glass-stage" id="stage">
+        <div class="record-hud" id="god-trigger">
+          <div class="hud-handle" id="display-handle">Vacant</div>
+          <div class="hud-time" id="display-time">0:00</div>
+        </div>
+        
+        <div id="bouncing-box">
+            <div class="core-outer"></div>
+            <div class="core-inner"></div>
+            <div class="core-handle-text" id="core-name-tag">@vacant</div>
+        </div>
+        
+        <div style="position:absolute; bottom:40px; width:100%; text-align:center; color:#333; font-size:0.5rem; letter-spacing:8px;">DO NOT BLINK</div>
+
+        <div id="custom-modal" style="display:none; position:absolute; inset:0; background:rgba(2,2,2,0.95); backdrop-filter:blur(8px); z-index:50; flex-direction:column; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity 0.4s ease;">
+          <div style="font-size:0.65rem; color:#888; letter-spacing:2px; line-height:2.5; text-transform:uppercase; margin-bottom:30px; text-align:center;">Target Authority: <span id="modal-price" style="color:var(--lilac); font-weight: bold;">₹0</span><br><br>DM @QuantumNuan on X.</div>
+          <button onclick="closeModal()" style="background:var(--lilac); color:var(--bg); padding:10px 30px; border:none; font-size:0.6rem; letter-spacing:2px; cursor:pointer; text-transform:uppercase; font-weight: bold; box-shadow: 0 0 15px var(--lilac-glow);">Understood</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-dock">
+      <button class="buy-throne-btn" id="buy-btn"> Show Your Handle </button>
+      <a href="https://x.com/quantumnuan" target="_blank" style="color:#444; font-size:0.45rem; text-decoration:none; letter-spacing:4px; text-transform:uppercase; transition: 0.3s;">Contact @QuantumNuan</a>
+    </div>
+  </div>
 
 <script>
 (() => {
-    /* ==========================================
-       1. THREE.JS LEGEND-LEVEL 3D DIAL
-       ========================================== */
-    const canvas3D = document.getElementById('webgl-canvas');
-    const scene = new THREE.Scene();
-    
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 50;
-    
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // Dial Group to hold 3D meshes
-    const dialGroup = new THREE.Group();
-    // Position it off-screen to the right, similar to the CSS version
-    const offScreenRightX = (window.innerWidth / 30); // Rough approximation based on screen aspect
-    dialGroup.position.set(offScreenRightX, 0, 0); 
-    scene.add(dialGroup);
-
-    // High-End Glass Material (MeshPhysicalMaterial)
-    const glassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x000000,
-        metalness: 0.9,
-        roughness: 0.1,
-        envMapIntensity: 1.0,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        transparent: true,
-        opacity: 0.8,
-    });
-
-    // Outer Glass Torus
-    const torusGeo = new THREE.TorusGeometry(20, 2, 32, 100);
-    const outerTorus = new THREE.Mesh(torusGeo, glassMaterial);
-    dialGroup.add(outerTorus);
-
-    // Inner Glowing Lilac Wireframe Torus
-    const wireGeo = new THREE.TorusGeometry(20, 0.5, 16, 50);
-    const wireMat = new THREE.MeshBasicMaterial({ 
-        color: 0xC8A2C8, // Lilac
-        wireframe: true,
-        transparent: true,
-        opacity: 0.3
-    });
-    const innerTorus = new THREE.Mesh(wireGeo, wireMat);
-    dialGroup.add(innerTorus);
-
-    // Add a glowing core indicator on the left edge of the ring
-    const coreGeo = new THREE.SphereGeometry(0.8, 16, 16);
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0xC8A2C8 });
-    const coreIndicator = new THREE.Mesh(coreGeo, coreMat);
-    coreIndicator.position.set(-20, 0, 0);
-    dialGroup.add(coreIndicator);
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const pointLight = new THREE.PointLight(0xC8A2C8, 2, 100);
-    pointLight.position.set(-10, 0, 20);
-    scene.add(pointLight);
-
-    // Resize handler for Three.js
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        dialGroup.position.set(window.innerWidth / 30, 0, 0);
-    });
-
-    /* ==========================================
-       2. UI SYNC & DRAG PHYSICS (Connect HTML to 3D)
-       ========================================== */
-    const dialUI = document.getElementById('dial-ui-layer');
+    // --- LAYOUT MANAGER & RADIAL DIAL LOGIC ---
+    const dial = document.getElementById('hero-dial-container');
     const hitbox = document.getElementById('dial-hitbox');
-    const views = document.querySelectorAll('.view-layer');
-    
-    const menuItems = [
-        { id: 'view-home', label: 'Home' },
-        { id: 'view-wait', label: 'Wait With Us' },
-        { id: 'view-stop', label: 'Stop Time' },
-        { id: 'view-cosmic', label: 'Cosmic Collision' }
+    const sections = document.querySelectorAll('.view-section');
+    const lobby = document.getElementById('lobby');
+    const mainBody = document.body;
+
+    const modes = [
+        { id: 'home', label: 'Something...' },
+        { id: 'wait', label: 'Wait with US' },
+        { id: 'stop', label: 'Stop Time' },
+        { id: 'cosmic', label: 'Cosmic Collision' }
     ];
 
-    let currentAngle = 0;
-    const anglePerItem = 25; 
-    let activeIndex = 0;
+    let currentRotation = 0;
+    const anglePerMode = 30; // degrees between modes
+    let activeModeIndex = 0;
 
-    // Generate HTML Labels over the 3D object
-    menuItems.forEach((item, index) => {
+    // Build the dial DOM dynamically
+    modes.forEach((mode, i) => {
+        // Ticks for premium feel
+        const tick = document.createElement('div');
+        tick.className = 'dial-tick';
+        tick.style.transform = `rotate(${i * anglePerMode}deg)`;
+        dial.appendChild(tick);
+
+        // Labels
         const label = document.createElement('div');
-        label.className = 'dial-label';
-        label.style.transform = `rotate(${index * anglePerItem + 180}deg)`;
-        label.innerHTML = `<span>${item.label}</span>`;
-        dialUI.appendChild(label);
+        label.className = `dial-label ${i===0?'active':''}`;
+        label.id = `label-${mode.id}`;
+        label.style.transform = `rotate(${i * anglePerMode}deg)`;
+        label.innerHTML = `<span>${mode.label}</span>`;
+        dial.appendChild(label);
     });
 
-    function updateDialVisuals() {
-        // Sync HTML
-        dialUI.style.transform = `translateY(-50%) rotate(${currentAngle}deg)`;
-        
-        // Sync THREE.js object (convert deg to rad)
-        dialGroup.rotation.z = -(currentAngle * Math.PI) / 180;
-
-        let closestIndex = Math.round(-currentAngle / anglePerItem);
-        if (closestIndex < 0) closestIndex = 0;
-        if (closestIndex >= menuItems.length) closestIndex = menuItems.length - 1;
-
-        if (closestIndex !== activeIndex) {
-            activeIndex = closestIndex;
+    function setView(modeId) {
+        // Handle normal HTML views inside lobby
+        if(modeId !== 'cosmic' && modeId !== 'wait-overlay') {
+            lobby.style.opacity = '1';
+            lobby.style.pointerEvents = 'auto';
             
-            document.querySelectorAll('.dial-label').forEach((el, i) => {
-                if (i === activeIndex) el.classList.add('active');
-                else el.classList.remove('active');
-            });
-
-            views.forEach(v => v.classList.remove('active'));
-            document.getElementById(menuItems[activeIndex].id).classList.add('active');
-
-            if(menuItems[activeIndex].id === 'view-cosmic') startCosmicMode();
-            else stopCosmicMode();
+            sections.forEach(s => s.classList.remove('active'));
+            const targetSection = document.getElementById(`section-${modeId}`);
+            if(targetSection) targetSection.classList.add('active');
         }
+
+        // Handle overlay games/views
+        if(modeId !== 'cosmic') stopCosmic();
+        
+        // Ensure Gun.js view logic is properly managed by original code
+        if(modeId !== 'wait') stopOriginalGame();
+
+        mainBody.style.cursor = modeId === 'cosmic' ? 'crosshair' : 'default';
     }
 
-    // Drag Physics
-    let isDragging = false, velocity = 0, lastY = 0, animationFrame;
+    function switchModeToIndex(index) {
+        if(index === activeModeIndex) return;
+        
+        // Remove active class
+        document.querySelector('.dial-label.active').classList.remove('active');
+        
+        // Add new active class
+        document.getElementById(`label-${modes[index].id}`).classList.add('active');
+        
+        activeModeIndex = index;
+        setView(modes[index].id);
+
+        if(modes[index].id === 'cosmic') startCosmic();
+    }
+
+    // --- Kinetic Interaction Physics ---
+    let startY = 0, isDragging = false, lastY = 0, velocity = 0, animationFrame;
+    const targetAngle = () => -activeModeIndex * anglePerMode;
 
     function handleStart(y) {
-        isDragging = true; lastY = y; velocity = 0;
+        isDragging = true; startY = y; lastY = y; velocity = 0;
         cancelAnimationFrame(animationFrame);
+        dial.style.transition = 'none'; // Snappy dragging
     }
+
     function handleMove(y) {
         if (!isDragging) return;
         const delta = y - lastY;
         lastY = y;
-        currentAngle += delta * 0.2; // Dial sensitivity
-        
-        const maxAngle = 10;
-        const minAngle = -(menuItems.length - 1) * anglePerItem - 10;
-        if(currentAngle > maxAngle) currentAngle = maxAngle;
-        if(currentAngle < minAngle) currentAngle = minAngle;
+        velocity = delta;
+        currentRotation += delta * 0.3; // Dial sensitivity multiplier
 
-        updateDialVisuals();
+        // Clamping bounds roughly
+        if(currentRotation > 15) currentRotation = 15;
+        const maxAngle = -(modes.length-1)*anglePerMode - 15;
+        if(currentRotation < maxAngle) currentRotation = maxAngle;
+
+        dial.style.transform = `rotate(${currentRotation}deg)`;
     }
+
     function handleEnd() {
         isDragging = false;
+        
+        // Determine closest mode to current rotation
+        let closestIndex = Math.round(-currentRotation / anglePerMode);
+        if(closestIndex < 0) closestIndex = 0;
+        if(closestIndex >= modes.length) closestIndex = modes.length-1;
+
+        switchModeToIndex(closestIndex);
+
+        // Momentum snap easing
         function momentumLoop() {
-            const targetAngle = -activeIndex * anglePerItem;
-            const diff = targetAngle - currentAngle;
+            const diff = targetAngle() - currentRotation;
             if (Math.abs(diff) < 0.1) {
-                currentAngle = targetAngle; updateDialVisuals(); return;
+                currentRotation = targetAngle();
+                dial.style.transform = `rotate(${currentRotation}deg)`;
+                return;
             }
-            currentAngle += diff * 0.15;
-            updateDialVisuals();
+            currentRotation += diff * 0.15; // Ease out multiplier
+            dial.style.transform = `rotate(${currentRotation}deg)`;
             animationFrame = requestAnimationFrame(momentumLoop);
         }
         momentumLoop();
     }
 
-    hitbox.addEventListener('touchstart', e => handleStart(e.touches[0].clientY));
-    hitbox.addEventListener('touchmove', e => handleMove(e.touches[0].clientY));
+    hitbox.addEventListener('touchstart', e => handleStart(e.touches[0].clientY), {passive: false});
+    hitbox.addEventListener('touchmove', e => { e.preventDefault(); handleMove(e.touches[0].clientY);}, {passive: false});
     hitbox.addEventListener('touchend', handleEnd);
     hitbox.addEventListener('mousedown', e => handleStart(e.clientY));
-    window.addEventListener('mousemove', e => { if(isDragging) handleMove(e.clientY); });
-    window.addEventListener('mouseup', () => { if(isDragging) handleEnd(); });
-
-    updateDialVisuals();
+    window.addEventListener('mousemove', e => { if(isDragging) handleMove(e.clientY);});
+    window.addEventListener('mouseup', () => { if(isDragging) handleEnd();});
+    
+    // Fallback snap for desktop wheel
+    hitbox.addEventListener('wheel', e => {
+        e.preventDefault();
+        const direction = e.deltaY > 0 ? 1 : -1;
+        let newIndex = activeModeIndex + direction;
+        if(newIndex < 0) newIndex = 0;
+        if(newIndex >= modes.length) newIndex = modes.length-1;
+        
+        // Animate snap for wheel
+        dial.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+        currentRotation = -newIndex * anglePerMode;
+        dial.style.transform = `rotate(${currentRotation}deg)`;
+        switchModeToIndex(newIndex);
+    }, {passive: false});
 
 
     /* ==========================================
-       3. COSMIC COLLISION (EXACT TAP PROTOCOL)
+       = REFACTORED COSMIC COLLISION PHYSICS    =
+       = No balls start. Ripple spawns 2. Mitosis follows =
        ========================================== */
-    const canvas2D = document.getElementById('cosmic-canvas');
-    const ctx = canvas2D.getContext('2d');
-    const cosmicView = document.getElementById('view-cosmic');
-    const tapDisplay = document.getElementById('tap-display');
+    const cosmicCanvas = document.getElementById('cosmic-canvas');
+    const ctx = cosmicCanvas.getContext('2d');
+    const cosmicUI = document.getElementById('cosmic-ui');
+    const boundary = 175; // Boundary circle radius (matches 350px css)
     
     let balls = [];
-    let cosmicLoop;
-    let cosmicActive = false;
-    let boundaryRadius = 175; 
-    let tapCount = 0;
-    
-    function resizeCanvas2D() {
-        canvas2D.width = window.innerWidth;
-        canvas2D.height = window.innerHeight;
+    let isCosmicActive = false;
+    let cosmicAnimationFrame;
+
+    function resizeCanvas() {
+        cosmicCanvas.width = window.innerWidth;
+        cosmicCanvas.height = window.innerHeight;
     }
-    window.addEventListener('resize', resizeCanvas2D);
-    resizeCanvas2D();
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    function startCosmicMode() { cosmicActive = true; runCosmicEngine(); }
-    function stopCosmicMode() { cosmicActive = false; cancelAnimationFrame(cosmicLoop); }
+    function startCosmic() {
+        isCosmicActive = true;
+        cosmicCanvas.style.display = 'block';
+        cosmicCanvas.style.pointerEvents = 'auto';
+        cosmicUI.style.display = 'block';
+        lobby.style.opacity = '0.05'; // Fade background lobby protocols
+        lobby.style.pointerEvents = 'none';
+        balls = []; // Reset on activation
+        if(!cosmicAnimationFrame) animateCosmic();
+    }
 
-    function createRipple(x, y) {
+    function stopCosmic() {
+        isCosmicActive = false;
+        cosmicCanvas.style.display = 'none';
+        cosmicCanvas.style.pointerEvents = 'none';
+        cosmicUI.style.display = 'none';
+        cancelAnimationFrame(cosmicAnimationFrame);
+        cosmicAnimationFrame = null;
+    }
+
+    function spawnRipple(x, y) {
         const r = document.createElement('div');
         r.className = 'ripple';
-        r.style.left = x + 'px'; r.style.top = y + 'px';
-        cosmicView.appendChild(r);
-        setTimeout(() => r.remove(), 1000);
+        r.style.left = x + 'px';
+        r.style.top = y + 'px';
+        mainBody.appendChild(r);
+        setTimeout(() => r.remove(), 1500); // ripple duration
     }
 
-    function spawnBall(x, y) {
+    function spawnTwoBalls(x, y) {
+        // Birth 1st ball
         balls.push({
-            x: x, y: y, radius: 6,
-            vx: (Math.random() - 0.5) * 8,
-            vy: (Math.random() - 0.5) * 8
+            x: x, y: y, radius: 8,
+            vx: -5, vy: -5, // Travel direction 1
+            color: '#d8b4fe'
+        });
+        // Birth 2nd ball
+        balls.push({
+            x: x, y: y, radius: 8,
+            vx: 5, vy: 5, // Opposite travel direction
+            color: '#fff' // White accents for spawn distinction
         });
     }
 
-    // THE STRICT TAP PROTOCOL
-    cosmicView.addEventListener('click', () => {
-        if (!cosmicActive) return;
+    // Capture taps on Cosmic view
+    mainBody.addEventListener('click', (e) => {
+        if (!isCosmicActive) return;
+        if (e.target === hitbox) return; // ignore dial touches
         
-        tapCount++;
-        tapDisplay.innerText = tapCount;
-
-        const cx = (canvas2D.width / 2) - 40;
-        const cy = canvas2D.height / 2;
-
-        // Condition 1: 2 Taps -> Spawn Ripple & 1st Ball
-        if (tapCount === 2 && balls.length === 0) {
-            createRipple(cx, cy);
-            spawnBall(cx, cy);
-        }
-
-        // Condition 2: 10 more taps (12 total) -> Mitosis into 2
-        if (tapCount === 12 && balls.length === 1) {
-            let original = balls[0];
-            original.vx = -4; original.vy = -4; // Deflect original
-            spawnBall(original.x, original.y);  // Birth second
-            balls[1].vx = 4; balls[1].vy = 4;   // Shoot opposite
+        // Handle zero ball starting protocol
+        if(balls.length === 0) {
+            const tapX = e.clientX;
+            const tapY = e.clientY;
+            spawnRipple(tapX, tapY);
+            // Spawn 2 balls traveling outward shortly after ripple starts
+            setTimeout(() => spawnTwoBalls(tapX, tapY), 200); 
         }
     });
 
-    function runCosmicEngine() {
-        if(!cosmicActive) return;
-        ctx.clearRect(0, 0, canvas2D.width, canvas2D.height);
+    function animateCosmic() {
+        if (!isCosmicActive) return;
+        ctx.clearRect(0, 0, cosmicCanvas.width, cosmicCanvas.height);
 
-        const offsetX = (canvas2D.width / 2) - 40; 
-        const centerY = canvas2D.height / 2;
+        const centerX = cosmicCanvas.width / 2;
+        const centerY = cosmicCanvas.height / 2;
         
-        const areaBoundary = Math.PI * (boundaryRadius * boundaryRadius);
-        const areaBall = Math.PI * (6 * 6);
-        const maxBalls = Math.floor((areaBoundary / areaBall) * 0.75);
-
-        // Reset if full
-        if(balls.length >= maxBalls && balls.length > 0) {
-            ctx.fillStyle = 'rgba(200, 162, 200, 0.5)';
-            ctx.fillRect(0,0, canvas2D.width, canvas2D.height);
+        // Target Reset based on area packing efficiency (roughly 70% of boundary covered is considered dense fill)
+        const boundaryArea = Math.PI * (boundary * boundary);
+        const currentBallArea = balls.reduce((sum, b) => sum + (Math.PI * (b.radius * b.radius)), 0);
+        
+        if (balls.length > 10 && currentBallArea > boundaryArea * 0.70) {
+            // Screen dense, reset protocol
+            ctx.fillStyle = 'rgba(216, 180, 254, 0.4)';
+            ctx.fillRect(0,0, cosmicCanvas.width, cosmicCanvas.height);
             balls = [];
-            tapCount = 0;
-            tapDisplay.innerText = tapCount;
-            return requestAnimationFrame(runCosmicEngine);
+            cosmicAnimationFrame = requestAnimationFrame(animateCosmic);
+            return;
         }
 
         for (let i = 0; i < balls.length; i++) {
             let b = balls[i];
-            b.x += b.vx; b.y += b.vy;
+            
+            b.x += b.vx;
+            b.y += b.vy;
 
-            const dx = b.x - offsetX;
-            const dy = b.y - centerY;
-            const dist = Math.hypot(dx, dy);
+            // Bouncing inside central boundary protocol
+            const dxCenter = b.x - centerX;
+            const dyCenter = b.y - centerY;
+            const distCenter = Math.hypot(dxCenter, dyCenter);
 
-            if (dist + b.radius > boundaryRadius) {
-                const angle = Math.atan2(dy, dx);
-                b.vx = -Math.cos(angle) * Math.abs(b.vx);
-                b.vy = -Math.sin(angle) * Math.abs(b.vy);
-                b.x = offsetX + Math.cos(angle) * (boundaryRadius - b.radius);
-                b.y = centerY + Math.sin(angle) * (boundaryRadius - b.radius);
+            if (distCenter + b.radius > boundary) {
+                // Determine normal vector from boundary collision
+                const normalX = dxCenter / distCenter;
+                const normalY = dyCenter / distCenter;
+
+                // Reflect velocity
+                const dot = (b.vx * normalX + b.vy * normalY);
+                b.vx = b.vx - 2 * dot * normalX;
+                b.vy = b.vy - 2 * dot * normalY;
+
+                // Nudge ball back inside slightly to prevent sticking
+                const nudgeDist = boundary - distCenter - b.radius;
+                b.x += nudgeDist * normalX * 1.1; 
+                b.y += nudgeDist * normalY * 1.1;
             }
 
-            // COLLISION MITOSIS LOGIC (Only triggers when there are >= 2 balls)
+            // Ball to Ball Mitosis protocol
             for (let j = i + 1; j < balls.length; j++) {
                 let b2 = balls[j];
-                let distBalls = Math.hypot(b.x - b2.x, b.y - b2.y);
-                
+                const dxBalls = b.x - b2.x;
+                const dyBalls = b.y - b2.y;
+                const distBalls = Math.hypot(dxBalls, dyBalls);
+
                 if (distBalls < b.radius + b2.radius) {
+                    // Force deflect
                     b.vx *= -1; b.vy *= -1;
                     b2.vx *= -1; b2.vy *= -1;
                     
-                    // Mitosis on collision! (Limit spawn rate slightly for performance)
-                    if(balls.length < maxBalls && Math.random() > 0.3) {
-                        spawnBall(b.x, b.y);
+                    // Mitosis protocol - spawn new ball (limit total balls for perf)
+                    if(balls.length < 500) {
+                        balls.push({
+                            x: b.x, y: b.y, radius: 8,
+                            vx: (Math.random() - 0.5) * 8, // chaotic spawn speed
+                            vy: (Math.random() - 0.5) * 8,
+                            color: '#d8b4fe'
+                        });
                     }
                 }
             }
 
+            // Rendering physics using shades and lighting accents
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#C8A2C8';
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = 'rgba(200, 162, 200, 0.8)';
+            ctx.fillStyle = b.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'var(--lilac)';
             ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = 0; // Reset for performance
         }
 
-        cosmicLoop = requestAnimationFrame(runCosmicEngine);
+        cosmicAnimationFrame = requestAnimationFrame(animateCosmic);
     }
 
-    /* ==========================================
-       4. THREE.JS RENDER LOOP
-       ========================================== */
-    function render3D() {
-        requestAnimationFrame(render3D);
-        innerTorus.rotation.y += 0.005; // Idle floating animation
-        innerTorus.rotation.x += 0.002;
-        renderer.render(scene, camera);
-    }
-    render3D();
 
 
-    /* ==========================================
-       5. TIME STOP & WAIT WITH US LOGIC
-       ========================================== */
-    let fStartTime, fTimerInterval, fIsRunning = false;
-    const fTimerDisplay = document.getElementById('f-timer');
-    
-    document.getElementById('f-start').addEventListener('click', () => {
-        if (!fIsRunning) {
-            fIsRunning = true; fStartTime = performance.now();
-            fTimerInterval = requestAnimationFrame(function update() {
-                let ms = performance.now() - fStartTime;
-                fTimerDisplay.textContent = `${Math.floor(ms/1000).toString().padStart(2,'0')}:${Math.floor((ms%1000)/10).toString().padStart(2,'0')}:${Math.floor(ms%10)}`;
-                fTimerInterval = requestAnimationFrame(update);
-            });
+    // ==========================================
+    // = ORIGINAL GUN.JS LOGIC (UNTOUCHED)      =
+    // ==========================================
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const leaderNode = gun.get('quantum-nuan-apex-v8').get('apex');
+
+    let bestSecs = 0, myTimer = null, mySecs = 0, boxAnimFrame;
+    const bouncingBox = document.getElementById('bouncing-box'), originalStage = document.getElementById('stage'), originalWrapper = document.getElementById('stage-wrapper');
+    const phi = 1.618; let originalX = 0, originalY = 0, originalDx = 1.4 * phi, originalDy = 1.4;
+
+    leaderNode.on((data) => {
+        if (data && data.seconds > bestSecs) {
+            bestSecs = data.seconds;
+            const handle = data.name.startsWith('@') ? data.name : '@' + data.name;
+            
+            document.getElementById('lobby-apex-name').innerText = handle;
+            document.getElementById('display-handle').innerText = handle;
+            document.getElementById('core-name-tag').innerText = handle;
+            document.getElementById('display-time').innerText = formatApexTime(bestSecs);
+            document.getElementById('buy-btn').innerText = `Show Your Handle, Buy in . (₹${bestSecs + 1})`;
+            document.getElementById('modal-price').innerText = `₹${bestSecs + 1}`;
         }
     });
 
-    document.getElementById('f-stop').addEventListener('click', () => {
-        if (fIsRunning) {
-            fIsRunning = false; cancelAnimationFrame(fTimerInterval);
-            if(fTimerDisplay.textContent.startsWith("10:00")) confetti({colors: ['#C8A2C8', '#fff']});
+    function stopOriginalGame() {
+        if(myTimer) { clearInterval(myTimer); myTimer = null; }
+        cancelAnimationFrame(boxAnimFrame);
+        boxAnimFrame = null;
+        document.getElementById('wait-overlay').style.display = 'none';
+        lobby.style.display = 'flex';
+    }
+
+    function animateBouncingBox() {
+        const maxX = originalStage.clientWidth - 40, maxY = originalStage.clientHeight - 40;
+        originalX += originalDx; originalY += originalDy;
+        if (originalX >= maxX) { originalX = maxX; originalDx = -Math.abs(originalDx); } else if (originalX <= 0) { originalX = 0; originalDx = Math.abs(originalDx); }
+        if (originalY >= maxY) { originalY = maxY; originalDy = -Math.abs(originalDy); } else if (originalY <= 0) { originalY = 0; originalDy = Math.abs(originalDy); }
+        bouncingBox.style.transform = `translate3d(${originalX}px, ${originalY}px, 0)`;
+        boxAnimFrame = requestAnimationFrame(animateBouncingBox);
+    }
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+        const h = prompt("Identity (@handle):");
+        if (!h) return;
+        
+        // Original game activation protocol disturbed by layout logic - fix context
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('wait-overlay').style.display = 'flex';
+        
+        setTimeout(() => { originalX = Math.random() * (originalStage.clientWidth - 40); originalY = Math.random() * (originalStage.clientHeight - 40); animateBouncingBox(); }, 100);
+        myTimer = setInterval(() => { mySecs++; if (mySecs > bestSecs) leaderNode.put({ name: h, seconds: mySecs }); }, 1000);
+    });
+
+    document.getElementById('buy-btn').addEventListener('click', () => { 
+        const m = document.getElementById('custom-modal'); m.style.display = 'flex'; setTimeout(() => m.style.opacity = '1', 10); 
+    });
+    window.closeModal = () => { const m = document.getElementById('custom-modal'); m.style.opacity = '0'; setTimeout(() => m.style.display = 'none', 400); };
+
+    document.addEventListener('mousemove', (e) => {
+        if(document.getElementById('wait-overlay').style.display !== 'flex') return;
+        const xAxis = (window.innerWidth / 2 - e.pageX) / 45, yAxis = (window.innerHeight / 2 - e.pageY) / 45;
+        originalWrapper.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+    });
+
+    document.addEventListener("visibilitychange", () => { if (document.hidden && myTimer) location.reload(); });
+    function formatApexTime(s) { return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; }
+
+    // Admin Backdoor
+    let backdoorT; const backdoorGodTrigger = document.getElementById('god-trigger');
+    backdoorGodTrigger.addEventListener('touchstart', (e) => { e.preventDefault(); backdoorT = setTimeout(() => {
+        const n = prompt("Admin Handle:"), backdoorSecs = parseInt(prompt("Seconds:"));
+        if(n && backdoorSecs) leaderNode.put({name: n, seconds: backdoorSecs});
+    }, 5000); }, {passive: false});
+    window.addEventListener('touchend', () => clearTimeout(backdoorT));
+
+
+    // ==========================================
+    // = THE FOCUS TRAP LOGIC (UNTOUCHED)      =
+    // ==========================================
+    let fStartTime, fElapsedTime = 0, fTimerInterval, fIsRunning = false;
+    const fTimerDisplay = document.getElementById('f-timer');
+    const fStartBtn = document.getElementById('f-start');
+    const fStopBtn = document.getElementById('f-stop');
+    const fResetBtn = document.getElementById('f-reset');
+    const fMessage = document.getElementById('focus-message');
+
+    function formatFocusTime(ms) {
+        let seconds = Math.floor(ms / 1000);
+        let hundredths = Math.floor((ms % 1000) / 10);
+        let milliseconds = Math.floor(ms % 10);
+        return `${seconds.toString().padStart(2, '0')}:${hundredths.toString().padStart(2, '0')}:${milliseconds.toString().padStart(1, '0')}`;
+    }
+
+    function updateFocusDisplay() {
+        const now = performance.now();
+        fElapsedTime = now - fStartTime;
+        fTimerDisplay.textContent = formatFocusTime(fElapsedTime);
+        fTimerInterval = requestAnimationFrame(updateFocusDisplay);
+    }
+
+    fStartBtn.addEventListener('click', () => {
+        if (!fIsRunning) {
+            fIsRunning = true;
+            if(fElapsedTime === 0) fStartTime = performance.now();
+            else fStartTime = performance.now() - fElapsedTime; 
+            updateFocusDisplay();
+            fMessage.textContent = "";
+            fStartBtn.classList.add('active-state');
         }
+    });
+
+    fStopBtn.addEventListener('click', () => {
+        if (fIsRunning) {
+            fIsRunning = false;
+            cancelAnimationFrame(fTimerInterval);
+            fStartBtn.classList.remove('active-state');
+            
+            const finalTime = fTimerDisplay.textContent;
+            if (finalTime === "10:00:0") {
+                fMessage.innerHTML = "<span style='color:var(--lilac)'>PERFECTION. YOU MAY ENTER.</span>";
+                confetti({
+                    particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ['#d8b4fe', '#ffffff', '#333333']
+                });
+            } else {
+                fMessage.textContent = "Focus Lost. Reset to try again.";
+                fMessage.style.color = "#888";
+            }
+        }
+    });
+
+    fResetBtn.addEventListener('click', () => {
+        fIsRunning = false;
+        cancelAnimationFrame(fTimerInterval);
+        fStartBtn.classList.remove('active-state');
+        fElapsedTime = 0;
+        fTimerDisplay.textContent = "00:00:0";
+        fMessage.textContent = "";
+        fMessage.style.color = "var(--lilac)";
     });
 
 })();
