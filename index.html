@@ -29,25 +29,30 @@
       height: 100vh; height: 100dvh; overflow: hidden; user-select: none;
     }
 
-    /* --- PREMIUM RADIAL NAVIGATION --- */
+        /* --- PREMIUM RADIAL NAVIGATION (STEALTH MODE) --- */
     #hero-dial-container {
         position: fixed;
-        right: -300px; /* Hide center, only show arc */
+        /* Massive wheel so the arc is elegant and nearly flat */
+        width: 800px;
+        height: 800px;
         top: 50%;
-        margin-top: -300px;
-        width: 600px;
-        height: 600px;
+        margin-top: -400px;
+        /* Push 90% of it off the right edge, leaving only a sliver visible */
+        right: -720px; 
         border-radius: 50%;
-        border: 1px solid rgba(216, 180, 254, 0.1);
-        background: linear-gradient(145deg, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.6) 100%);
-        box-shadow: -15px 0 40px rgba(0,0,0,0.8), inset 5px 0 20px rgba(216, 180, 254, 0.05);
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
+        
+        /* The "Semi-Visible" Stealth Lighting */
+        background: transparent;
+        border: none;
+        /* Ghostly lilac rim light and deep shadow for depth */
+        box-shadow: inset 15px 0 30px rgba(0,0,0,0.8), -5px 0 20px rgba(216, 180, 254, 0.08);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        
         display: flex;
         align-items: center;
         z-index: 9998;
         transform: rotate(0deg);
-        transition: transform 0.1s linear; /* Responsive dragging */
         will-change: transform;
     }
 
@@ -57,21 +62,35 @@
     }
     .dial-tick::after {
         content: ''; position: absolute; right: 0; top: 0; width: 10px; height: 1px;
-        background: rgba(216, 180, 254, 0.2);
+        background: linear-gradient(90deg, transparent, rgba(216, 180, 254, 0.3));
     }
 
     .dial-label {
         position: absolute; top: 50%; left: 50%; width: 50%; height: 20px;
         transform-origin: 0% 50%; margin-top: -10px;
         display: flex; align-items: center; justify-content: flex-end;
-        padding-right: 40px;
-        font-size: 0.65rem; letter-spacing: 4px; text-transform: uppercase;
-        color: #444; transition: all 0.3s ease;
+        padding-right: 40px; /* Distance from the rim */
+        font-size: 0.6rem; letter-spacing: 4px; text-transform: uppercase;
+        color: rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+    }
+
+    /* Counter-rotate the text so it is perfectly readable on the left arc */
+    .dial-label span {
+        transform: rotate(180deg);
+        display: inline-block;
     }
     
     .dial-label.active {
         color: var(--lilac); font-weight: bold;
         text-shadow: 0 0 15px var(--lilac-glow);
+        transform: scale(1.05); /* Slight active pop */
+    }
+
+    /* Hitbox stays wide enough to comfortably catch thumbs */
+    #dial-hitbox {
+        position: fixed; right: 0; top: 0; width: 120px; height: 100vh;
+        z-index: 9999; touch-action: none; cursor: grab;
     }
 
     /* Hitbox for user interaction - captures drags even if off center */
@@ -285,22 +304,23 @@
     const anglePerMode = 30; // degrees between modes
     let activeModeIndex = 0;
 
-    // Build the dial DOM dynamically
+        // Build the dial DOM dynamically
     modes.forEach((mode, i) => {
-        // Ticks for premium feel
+        // Ticks (+180 pushes it to the visible left arc)
         const tick = document.createElement('div');
         tick.className = 'dial-tick';
-        tick.style.transform = `rotate(${i * anglePerMode}deg)`;
+        tick.style.transform = `rotate(${i * anglePerMode + 180}deg)`;
         dial.appendChild(tick);
 
-        // Labels
+        // Labels (+180 pushes it to the left arc)
         const label = document.createElement('div');
         label.className = `dial-label ${i===0?'active':''}`;
         label.id = `label-${mode.id}`;
-        label.style.transform = `rotate(${i * anglePerMode}deg)`;
+        label.style.transform = `rotate(${i * anglePerMode + 180}deg)`;
         label.innerHTML = `<span>${mode.label}</span>`;
         dial.appendChild(label);
     });
+
 
     function setView(modeId) {
         // Handle normal HTML views inside lobby
